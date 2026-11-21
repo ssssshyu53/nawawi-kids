@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">الأربعون النووية للأطفال</string>
+    <string name="app_subtitle">العب، استمع، احفظ، واجمع النجوم الـ ٤٢ لتنال شهادتك!</string>
+    <string name="hero_badge_age">أبطال من ٦ إلى ١٢ سنة</string>
+    <string name="certificate_button">شهادة البطل</string>
+    <string name="library_button">مكتبة السنة</string>
+    <string name="journey_progress_label">مسار الرحلة:</string>
+    <string name="journey_story_ribbon">حكاية رحلة النجوم الأربعين</string>
+    <string name="hero_name_prompt">ما اسمك يا بطل؟ (سيظهر في الحكاية وعلى الشهادة)</string>
+    <string name="hero_name_placeholder">اكتب اسمك هنا</string>
+    <string name="teacher_mode_label">وضع المعلم / ولي الأمر (فتح كل المحطات للاستعراض)</string>
+    <string name="reset_progress_label">إعادة بدء الحكاية</string>
+    <string name="reset_confirm_title">إعادة بدء الرحلة؟</string>
+    <string name="reset_confirm_body">سيتم مسح جميع النجوم المكتسبة والبدء من المحطة الأولى. هل أنت متأكد؟</string>
+    <string name="confirm_yes">نعم، ابدأ من جديد</string>
+    <string name="confirm_cancel">إلغاء</string>
+    <string name="back_to_map">خريطة الرحلة</string>
+    <string name="prev_station">السابقة</string>
+    <string name="next_station">التالية</string>
+    <string name="step_listen">استمع</string>
+    <string name="step_learn">افهم</string>
+    <string name="step_memorize">احفظ وسمّع</string>
+    <string name="step_quiz">العب واربح</string>
+    <string name="mic_permission_needed">نحتاج إذن الميكروفون حتى يسمع البرنامج صوتك ويختبر حفظك كلمةً بكلمة!</string>
+    <string name="grant_mic_permission">اسمح بالميكروفون</string>
+    <string name="share_certificate">مشاركة الشهادة</string>
+    <string name="close_label">إغلاق</string>
+</resources>

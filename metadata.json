@@ -1,0 +1,8 @@
+{
+  "name": "الأربعون النووية للأطفال",
+  "description": "تطبيق تفاعلي للأطفال لحفظ وفهم الأربعين النووية برحلة قصصية، تلاوة متزامنة كلمة بكلمة، تسميع مباشر بالصوت مع اكتشاف الأخطاء، ألعاب تفاعلية، وشهادة تقدير.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
