@@ -1,0 +1,29 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+auth.json
+id_rsa*
+
+# Tools / scratch / deploy runners
+/tools/
+/scripts/
+/scratch/
+deploy_*.py
+*.dump
+
+# Dependencies & caches
+/vendor/
+node_modules/
+__pycache__/
+*.log
+error_log
+
+# Archives / OS
+*.zip
+*.tar.gz
+.DS_Store
+Thumbs.db
