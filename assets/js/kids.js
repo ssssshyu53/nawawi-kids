@@ -1308,7 +1308,7 @@
     async function init() {
         bindGlobalEvents();
         try {
-            const res = await fetch('data/hadiths.json?v=20261120');
+            const res = await fetch('data/hadiths.json?v=20261121');
             if (!res.ok) throw new Error('HTTP ' + res.status);
             dataset = await res.json();
             dataset.hadiths.forEach(h => { hadithsById[h.id] = h; });

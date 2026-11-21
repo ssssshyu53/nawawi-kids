@@ -674,6 +674,6 @@ $prefillName = nkPrefillName();
             defaultName: <?php echo json_encode($prefillName, JSON_UNESCAPED_UNICODE); ?>
         };
     </script>
-    <script src="assets/js/kids.js?v=20261120_6"></script>
+    <script src="assets/js/kids.js?v=20261121_1"></script>
 </body>
 </html>
