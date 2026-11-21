@@ -1,5 +1,6 @@
 package com.nawawikids.app.ui.screens
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -12,82 +13,75 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
-import androidx.compose.material.icons.automirrored.rounded.VolumeOff
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.Extension
+import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.RestartAlt
-import androidx.compose.material.icons.rounded.School
 import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nawawikids.app.model.ChapterVisual
 import com.nawawikids.app.model.Hadith
 import com.nawawikids.app.model.HadithDataset
+import com.nawawikids.app.model.HadithProgressRecord
+import com.nawawikids.app.model.MapFilter
 import com.nawawikids.app.model.StorybookChapters
 import com.nawawikids.app.model.UserProgress
 import com.nawawikids.app.ui.components.AssetImage
@@ -97,50 +91,67 @@ import com.nawawikids.app.ui.components.StorybookBackground
 import com.nawawikids.app.ui.components.ToyCard
 import com.nawawikids.app.ui.theme.StorybookColors
 import com.nawawikids.app.util.ArabicUtils
-import kotlinx.coroutines.launch
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
+/**
+ * Completely redesigned native Android 4-World Adventure Map:
+ * 1) Modern Hero Top Bar (Profile Avatar + Rank + Streak + Stars + Library + Certificate)
+ * 2) "Continue Your Adventure" Spotlight Card with saved step progress
+ * 3) Illustrated 4-World Horizontal Explorer Deck (instant switching, no 6000dp endless scroll)
+ * 4) Innovative Stepping-Stone Adventure Timeline with live step indicators, poster previews & voice badges
+ */
 @Composable
 fun JourneyMapScreen(
     dataset: HadithDataset,
     progress: UserProgress,
+    selectedWorldId: Int,
+    mapFilter: MapFilter,
+    onSelectWorld: (Int) -> Unit,
+    onSelectFilter: (MapFilter) -> Unit,
     onOpenStation: (Int) -> Unit,
-    onNameChange: (String) -> Unit,
-    onToggleTeacherMode: (Boolean) -> Unit,
-    onToggleSfx: () -> Unit,
-    onResetProgress: () -> Unit,
+    onOpenProfile: () -> Unit,
     onOpenCertificate: () -> Unit,
     onOpenLibrary: () -> Unit
 ) {
-    val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    var showResetDialog by remember { mutableStateOf(false) }
-
     val total = dataset.hadiths.size.coerceAtLeast(42)
     val doneCount = progress.completedIds.size
-    val pct = ((doneCount.toFloat() / total.toFloat()) * 100f).roundToInt().coerceIn(0, 100)
-    val frontier = progress.frontierId(total)
+    val overallPct = ((doneCount.toFloat() / total.toFloat()) * 100f).roundToInt().coerceIn(0, 100)
+    val frontierId = progress.frontierId(total)
+    val frontierHadith = remember(dataset, frontierId) {
+        dataset.hadiths.firstOrNull { it.id == frontierId } ?: dataset.hadiths.first()
+    }
+
+    val activeWorld = StorybookChapters.byId(selectedWorldId)
+    val worldHadiths = remember(dataset, selectedWorldId) {
+        dataset.hadiths.filter { it.stage == selectedWorldId }
+    }
+    val filteredHadiths = remember(worldHadiths, mapFilter, progress) {
+        when (mapFilter) {
+            MapFilter.ALL -> worldHadiths
+            MapFilter.IN_PROGRESS -> worldHadiths.filter { progress.isUnlocked(it.id) && !progress.completedIds.contains(it.id) }
+            MapFilter.COMPLETED -> worldHadiths.filter { progress.completedIds.contains(it.id) }
+            MapFilter.NEEDS_RECITATION -> worldHadiths.filter { progress.isUnlocked(it.id) && !progress.recitedIds.contains(it.id) }
+        }
+    }
 
     val statusPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     StorybookBackground {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Sky & Arch Top Bar + Rainbow Star Progress Bar
-            JourneyTopHeader(
+            // 1. Clean Hero Top Bar
+            ModernHeroTopBar(
+                progress = progress,
                 doneCount = doneCount,
                 total = total,
-                pct = pct,
-                sfxMuted = progress.sfxMuted,
+                overallPct = overallPct,
                 topInset = statusPadding,
-                onToggleSfx = onToggleSfx,
+                onOpenProfile = onOpenProfile,
                 onOpenLibrary = onOpenLibrary,
                 onOpenCertificate = onOpenCertificate
             )
 
             LazyColumn(
-                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .widthIn(max = 760.dp)
@@ -149,315 +160,330 @@ fun JourneyMapScreen(
                     start = 14.dp,
                     end = 14.dp,
                     top = 14.dp,
-                    bottom = 24.dp + navPadding
+                    bottom = 28.dp + navPadding
                 ),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 1. Story Intro Card
-                item(key = "intro_card") {
-                    StoryIntroCard(
+                // 2. Hero "Continue Adventure" Spotlight Card
+                item(key = "hero_spotlight") {
+                    ContinueAdventureSpotlight(
+                        frontierHadith = frontierHadith,
                         progress = progress,
                         doneCount = doneCount,
                         total = total,
-                        frontier = frontier,
-                        onNameChange = onNameChange,
-                        onContinue = {
-                            if (doneCount >= total) {
-                                onOpenCertificate()
-                            } else {
-                                onOpenStation(frontier)
-                            }
-                        }
+                        onOpenStation = onOpenStation,
+                        onOpenProfile = onOpenProfile,
+                        onOpenCertificate = onOpenCertificate
                     )
                 }
 
-                // 2. 4 Chapter Quick Jump Chips
-                item(key = "chapter_chips") {
-                    ChapterChipsGrid(
-                        dataset = dataset,
-                        completedIds = progress.completedIds,
-                        onJumpToChapter = { chapterIndex ->
-                            // Item indices: 0=intro, 1=chips, 2..5=chapters
-                            scope.launch {
-                                listState.animateScrollToItem(2 + chapterIndex)
-                            }
+                // 3. 4-World Horizontal Illustrated Explorer Deck
+                item(key = "world_deck_header") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = "رحلة الأربعين النووية",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Black,
+                                color = StorybookColors.StoryNavy
+                            )
+                            Text(
+                                text = "اختر العالم لتستعرض محطاته وتقدّمك المحفوظ",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = StorybookColors.StoryMuted
+                            )
                         }
-                    )
-                }
-
-                // 3. The 4 Chapters with Winding Bezier Roads
-                items(
-                    count = StorybookChapters.chapters.size,
-                    key = { idx -> "chapter_${StorybookChapters.chapters[idx].id}" }
-                ) { idx ->
-                    val chapter = StorybookChapters.chapters[idx]
-                    val chapterHadiths = remember(dataset, chapter.id) {
-                        dataset.hadiths.filter { it.stage == chapter.id }
+                        Surface(
+                            shape = CircleShape,
+                            color = StorybookColors.TealSoft,
+                            border = BorderStroke(1.5.dp, StorybookColors.TealBorder)
+                        ) {
+                            Text(
+                                text = "${ArabicUtils.toArabicDigits(progress.totalXp)} XP",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Black,
+                                color = StorybookColors.TealDark,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
                     }
-                    ChapterWorldCard(
-                        chapter = chapter,
-                        hadiths = chapterHadiths,
+                }
+
+                item(key = "world_deck") {
+                    WorldExplorerDeck(
+                        dataset = dataset,
                         progress = progress,
-                        frontierId = frontier,
-                        onOpenStation = onOpenStation
+                        selectedWorldId = selectedWorldId,
+                        onSelectWorld = onSelectWorld
                     )
                 }
 
-                // 4. Final Treasure Chest Card
+                // 4. Selected World Banner + Filter Chips
+                item(key = "selected_world_banner") {
+                    SelectedWorldSummaryCard(
+                        world = activeWorld,
+                        worldHadiths = worldHadiths,
+                        progress = progress,
+                        activeFilter = mapFilter,
+                        onSelectFilter = onSelectFilter
+                    )
+                }
+
+                // 5. Stepping-Stone Adventure Timeline Cards
+                if (filteredHadiths.isEmpty()) {
+                    item(key = "empty_filter") {
+                        ToyCard(containerColor = Color.White) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "لا توجد محطات في هذا التصنيف حالياً!",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = StorybookColors.StoryNavy
+                                )
+                                CandyButton(
+                                    onClick = { onSelectFilter(MapFilter.ALL) },
+                                    topColor = activeWorld.light,
+                                    bottomColor = activeWorld.main,
+                                    borderColor = activeWorld.dark,
+                                    lipColor = activeWorld.dark,
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                                ) {
+                                    Text("اعرض كل محطات العالم", color = Color.White, fontWeight = FontWeight.Black)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    itemsIndexed(
+                        items = filteredHadiths,
+                        key = { _, h -> "milestone_${h.id}" }
+                    ) { index, hadith ->
+                        val isFirst = index == 0
+                        val isLast = index == filteredHadiths.lastIndex
+                        val prevCompleted = if (index > 0) progress.completedIds.contains(filteredHadiths[index - 1].id) else false
+                        AdventureMilestoneRow(
+                            hadith = hadith,
+                            world = activeWorld,
+                            record = progress.recordFor(hadith.id),
+                            isUnlocked = progress.isUnlocked(hadith.id),
+                            isCompleted = progress.completedIds.contains(hadith.id),
+                            isFrontier = hadith.id == frontierId && !progress.completedIds.contains(hadith.id),
+                            isFirst = isFirst,
+                            isLast = isLast,
+                            prevCompleted = prevCompleted,
+                            onClick = { onOpenStation(hadith.id) }
+                        )
+                    }
+                }
+
+                // 6. Final Treasure Chest Reward Card
                 item(key = "treasure_chest") {
-                    TreasureChestCard(
+                    TreasureRewardBanner(
                         heroName = progress.heroDisplayName,
                         doneCount = doneCount,
                         total = total,
                         onOpenCertificate = onOpenCertificate
                     )
                 }
-
-                // 5. Parent / Teacher Tools Card
-                item(key = "teacher_tools") {
-                    TeacherToolsCard(
-                        teacherMode = progress.teacherMode,
-                        onToggleTeacherMode = onToggleTeacherMode,
-                        onRequestReset = { showResetDialog = true }
-                    )
-                }
             }
         }
-    }
-
-    if (showResetDialog) {
-        AlertDialog(
-            onDismissRequest = { showResetDialog = false },
-            containerColor = StorybookColors.CreamBg,
-            title = {
-                Text(
-                    text = "إعادة بدء الرحلة؟",
-                    fontWeight = FontWeight.Black,
-                    color = StorybookColors.StoryNavy
-                )
-            },
-            text = {
-                Text(
-                    text = "سيتم مسح جميع النجوم المكتسبة والبدء من المحطة الأولى. هل أنت متأكد؟",
-                    color = StorybookColors.StoryInk
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showResetDialog = false
-                        onResetProgress()
-                    },
-                    modifier = Modifier.testTag("confirm_reset_button")
-                ) {
-                    Text("نعم، ابدأ من جديد", color = StorybookColors.CoralDark, fontWeight = FontWeight.Black)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showResetDialog = false }) {
-                    Text("إلغاء", color = StorybookColors.TealDark, fontWeight = FontWeight.Bold)
-                }
-            }
-        )
     }
 }
 
 @Composable
-private fun JourneyTopHeader(
+private fun ModernHeroTopBar(
+    progress: UserProgress,
     doneCount: Int,
     total: Int,
-    pct: Int,
-    sfxMuted: Boolean,
+    overallPct: Int,
     topInset: androidx.compose.ui.unit.Dp,
-    onToggleSfx: () -> Unit,
+    onOpenProfile: () -> Unit,
     onOpenLibrary: () -> Unit,
     onOpenCertificate: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    listOf(StorybookColors.SkyLight, StorybookColors.SkySoft, StorybookColors.CreamBg)
-                )
-            )
-            .padding(top = topInset)
+    Surface(
+        color = Color.White.copy(alpha = 0.96f),
+        shadowElevation = 4.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+        Column(modifier = Modifier.padding(top = topInset)) {
             Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Box(modifier = Modifier.width(58.dp).height(44.dp)) {
-                    AssetImage(
-                        assetPath = "img/boy_guide.png",
-                        contentDescription = "عمر صديق الرحلة",
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color.White)
-                            .border(2.dp, Color.White, CircleShape)
-                            .align(Alignment.CenterStart)
-                    )
-                    AssetImage(
-                        assetPath = "img/girl_guide.png",
-                        contentDescription = "مريم صديقة الرحلة",
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Color.White)
-                            .border(2.dp, Color.White, CircleShape)
-                            .align(Alignment.CenterEnd)
-                    )
-                }
-                Spacer(Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "الأربعون النووية للأطفال",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Black,
-                        color = StorybookColors.StoryNavy,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = "استمع، افهم، سمّع بصوتك، والعب!",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = StorybookColors.TealDark,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Star Counter Pill
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color.White,
-                    border = BorderStroke(2.dp, StorybookColors.GoldMain),
-                    shadowElevation = 2.dp
+                // Tappable Hero Avatar & Rank Pill
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(StorybookColors.CreamBg)
+                        .border(1.5.dp, StorybookColors.GoldBorder, RoundedCornerShape(20.dp))
+                        .clickable(onClick = onOpenProfile)
+                        .padding(horizontal = 8.dp, vertical = 5.dp)
+                        .testTag("open_profile_button"),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Star,
-                            contentDescription = "النجوم",
-                            tint = StorybookColors.GoldMain,
-                            modifier = Modifier.size(18.dp)
-                        )
+                    AssetImage(
+                        assetPath = progress.avatarChoice.assetPath,
+                        contentDescription = "ملف البطل",
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .border(2.dp, StorybookColors.GoldMain, CircleShape)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = if (progress.hasSetProfileName) progress.heroDisplayName else "الأربعون النووية",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Black,
+                                color = StorybookColors.StoryNavy,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Icon(
+                                imageVector = Icons.Rounded.Edit,
+                                contentDescription = "تعديل الملف",
+                                tint = StorybookColors.TealMain,
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
                         Text(
-                            text = "${ArabicUtils.toArabicDigits(doneCount)}/${ArabicUtils.toArabicDigits(total)}",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Black,
-                            color = StorybookColors.GoldDeep
+                            text = progress.rank.title,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = StorybookColors.TealDark,
+                            maxLines = 1
                         )
                     }
                 }
 
-                // Sunnah Library Button
-                CandyButton(
-                    onClick = onOpenLibrary,
-                    modifier = Modifier.testTag("open_library_button"),
-                    topColor = Color.White,
-                    bottomColor = StorybookColors.TealSoft,
-                    borderColor = StorybookColors.TealMain,
-                    lipColor = StorybookColors.TealDark,
-                    contentColor = StorybookColors.TealDark,
-                    cornerRadius = 14.dp,
-                    contentPadding = PaddingValues(horizontal = 9.dp, vertical = 8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.MenuBook,
-                        contentDescription = "مكتبة السنة",
-                        tint = StorybookColors.TealDark,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                Spacer(Modifier.width(8.dp))
 
-                // Sound FX Toggle
-                CandyButton(
-                    onClick = onToggleSfx,
-                    modifier = Modifier.testTag("toggle_sfx_button"),
-                    topColor = Color.White,
-                    bottomColor = StorybookColors.SkySoft,
-                    borderColor = StorybookColors.SkyAccent,
-                    lipColor = StorybookColors.SkyDark,
-                    contentColor = StorybookColors.SkyDark,
-                    cornerRadius = 14.dp,
-                    contentPadding = PaddingValues(horizontal = 9.dp, vertical = 8.dp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = if (sfxMuted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp,
-                        contentDescription = if (sfxMuted) "تشغيل المؤثرات" else "كتم المؤثرات",
-                        tint = StorybookColors.SkyDark,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                    // Streak Pill
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = StorybookColors.CoralSoft,
+                        border = BorderStroke(1.5.dp, StorybookColors.CoralBorder)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.LocalFireDepartment,
+                                contentDescription = "أيام متتالية",
+                                tint = StorybookColors.CoralMain,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = ArabicUtils.toArabicDigits(progress.streakDays),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Black,
+                                color = StorybookColors.CoralDeep
+                            )
+                        }
+                    }
 
-                // Certificate Button
-                CandyButton(
-                    onClick = onOpenCertificate,
-                    modifier = Modifier.testTag("header_certificate_button"),
-                    topColor = Color(0xFFFB7185),
-                    bottomColor = Color(0xFFE11D48),
-                    borderColor = StorybookColors.CoralDark,
-                    lipColor = StorybookColors.CoralDeep,
-                    cornerRadius = 14.dp,
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.EmojiEvents,
-                        contentDescription = "شهادة البطل",
-                        tint = StorybookColors.GoldLight,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    // Stars Pill
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = StorybookColors.GoldSoft,
+                        border = BorderStroke(1.5.dp, StorybookColors.GoldMain)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Star,
+                                contentDescription = "النجوم",
+                                tint = StorybookColors.GoldMain,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "${ArabicUtils.toArabicDigits(doneCount)}/${ArabicUtils.toArabicDigits(total)}",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Black,
+                                color = StorybookColors.GoldDeep
+                            )
+                        }
+                    }
+
+                    // Library Icon Button
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(13.dp))
+                            .background(StorybookColors.TealSoft)
+                            .border(1.5.dp, StorybookColors.TealMain, RoundedCornerShape(13.dp))
+                            .clickable(onClick = onOpenLibrary)
+                            .testTag("open_library_button"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.MenuBook,
+                            contentDescription = "مكتبة السنة",
+                            tint = StorybookColors.TealDark,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+
+                    // Certificate Icon Button
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(13.dp))
+                            .background(Brush.verticalGradient(listOf(Color(0xFFFB7185), Color(0xFFE11D48))))
+                            .border(1.5.dp, StorybookColors.CoralDark, RoundedCornerShape(13.dp))
+                            .clickable(onClick = onOpenCertificate)
+                            .testTag("header_certificate_button"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.EmojiEvents,
+                            contentDescription = "شهادة البطل",
+                            tint = StorybookColors.GoldLight,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
                 }
             }
-        }
 
-        // Rainbow Star Progress Strip
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(StorybookColors.GoldSoft)
-                .border(1.dp, Color(0xFFFDE68A))
-                .padding(horizontal = 14.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "مسار الرحلة:",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Black,
-                color = StorybookColors.GoldDark
-            )
+            // Sleek Slim Journey Progress Indicator
             Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(14.dp)
-                    .clip(CircleShape)
-                    .background(Color.White)
-                    .border(2.dp, Color(0xFFEAB308), CircleShape)
-                    .padding(2.dp)
+                    .fillMaxWidth()
+                    .height(5.dp)
+                    .background(StorybookColors.GoldSoft)
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(fraction = (pct / 100f).coerceAtLeast(if (pct > 0) 0.04f else 0f))
-                        .fillMaxSize()
-                        .clip(CircleShape)
+                        .fillMaxWidth((overallPct / 100f).coerceAtLeast(if (doneCount > 0) 0.03f else 0f))
+                        .fillMaxHeight()
                         .background(
                             Brush.horizontalGradient(
                                 listOf(StorybookColors.GoldMain, StorybookColors.EmeraldMain, StorybookColors.TealMain)
@@ -465,661 +491,757 @@ private fun JourneyTopHeader(
                         )
                 )
             }
-            Surface(
-                shape = CircleShape,
-                color = Color.White,
-                border = BorderStroke(1.dp, StorybookColors.TealBorder)
-            ) {
-                Text(
-                    text = "${ArabicUtils.toArabicDigits(pct)}٪",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Black,
-                    color = StorybookColors.TealDark,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                )
-            }
         }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(3.dp)
-                .background(Color(0xFFEAB308))
-        )
     }
 }
 
 @Composable
-private fun StoryIntroCard(
+private fun ContinueAdventureSpotlight(
+    frontierHadith: Hadith,
     progress: UserProgress,
     doneCount: Int,
     total: Int,
-    frontier: Int,
-    onNameChange: (String) -> Unit,
-    onContinue: () -> Unit
+    onOpenStation: (Int) -> Unit,
+    onOpenProfile: () -> Unit,
+    onOpenCertificate: () -> Unit
 ) {
-    val heroName = progress.heroDisplayName
-    val greeting = if (heroName == "بطل") "أهلاً بك يا بطل!" else "أهلاً بك يا $heroName!"
-    val ctaLabel = when {
-        doneCount >= total -> "افتح صندوق الكنز الآن"
-        doneCount == 0 && frontier == 1 -> "ابدأ الرحلة من المحطة الأولى"
-        else -> "تابع الرحلة: المحطة ${ArabicUtils.toArabicDigits(frontier)}"
-    }
+    val world = StorybookChapters.byId(frontierHadith.stage)
+    val record = progress.recordFor(frontierHadith.id)
+    val allDone = doneCount >= total
 
-    ToyCard(
-        containerColor = Color(0xFFFFFDF7),
-        borderColor = StorybookColors.GoldBorder,
-        lipColor = StorybookColors.GoldLip
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF0F2F4C), RoundedCornerShape(28.dp))
+            .padding(bottom = 6.dp)
+            .clip(RoundedCornerShape(28.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(Color(0xFF1E3A5F), Color(0xFF0F766E))
+                )
+            )
+            .border(2.5.dp, Color(0xFF38BDF8).copy(alpha = 0.45f), RoundedCornerShape(28.dp))
+            .padding(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Box(modifier = Modifier.width(104.dp).height(76.dp)) {
-                AssetImage(
-                    assetPath = "img/boy_guide.png",
-                    contentDescription = "عمر",
-                    modifier = Modifier
-                        .size(66.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                        .border(3.dp, Color.White, CircleShape)
-                        .align(Alignment.BottomStart)
-                )
-                AssetImage(
-                    assetPath = "img/girl_guide.png",
-                    contentDescription = "مريم",
-                    modifier = Modifier
-                        .size(62.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                        .border(3.dp, Color.White, CircleShape)
-                        .align(Alignment.TopEnd)
-                )
-            }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                RibbonBadge(text = "حكاية رحلة النجوم الأربعين")
-                Text(
-                    text = greeting,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Black,
-                    color = StorybookColors.StoryNavy
-                )
-            }
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        Text(
-            text = "أنا عمر وهذه أختي مريم، وسنسافر معك عبر أربعة عوالم عجيبة! في كل محطة حديثٌ نبويّ جميل: نستمع له كلمةً بكلمة، نفهم معناه، نسمّعه بصوتنا مع كشف الأخطاء تلقائياً، ونلعب لنربح نجمة ذهبية.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF334155),
-            lineHeight = 23.sp
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        Text(
-            text = "ما اسمك يا بطل؟ (سيظهر في الحكاية وعلى شهادتك)",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Black,
-            color = StorybookColors.SkyDark
-        )
-        Spacer(Modifier.height(6.dp))
-
-        OutlinedTextField(
-            value = progress.studentName,
-            onValueChange = onNameChange,
-            placeholder = { Text("اكتب اسمك هنا") },
-            singleLine = true,
-            shape = RoundedCornerShape(18.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = StorybookColors.TealMain,
-                unfocusedBorderColor = Color(0xFF7DD3FC),
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                focusedTextColor = StorybookColors.StoryNavy,
-                unfocusedTextColor = StorybookColors.StoryNavy
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("hero_name_input")
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        CandyButton(
-            onClick = onContinue,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("continue_journey_button"),
-            topColor = Color(0xFF34D399),
-            bottomColor = Color(0xFF059669),
-            borderColor = Color(0xFF047857),
-            lipColor = Color(0xFF064E3B),
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.PlayArrow,
-                contentDescription = null,
-                tint = StorybookColors.GoldLight,
-                modifier = Modifier.size(22.dp)
-            )
-            Text(
-                text = ctaLabel,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Black,
-                color = Color.White
-            )
-        }
-    }
-}
-
-@Composable
-private fun ChapterChipsGrid(
-    dataset: HadithDataset,
-    completedIds: Set<Int>,
-    onJumpToChapter: (Int) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        val rows = StorybookChapters.chapters.chunked(2)
-        rows.forEachIndexed { rowIdx, pair ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                pair.forEachIndexed { colIdx, ch ->
-                    val chIdx = rowIdx * 2 + colIdx
-                    val ids = remember(dataset, ch.id) {
-                        dataset.hadiths.filter { it.stage == ch.id }.map { it.id }
-                    }
-                    val got = ids.count { completedIds.contains(it) }
-                    ToyCard(
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("chapter_chip_${ch.id}")
-                            .clickable { onJumpToChapter(chIdx) },
-                        containerColor = ch.bg,
-                        borderColor = ch.border,
-                        lipColor = ch.main,
-                        cornerRadius = 20.dp,
-                        lipHeight = 4.dp,
-                        contentPadding = PaddingValues(11.dp)
-                    ) {
-                        Text(
-                            text = ch.ord,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = ch.ink.copy(alpha = 0.8f)
-                        )
-                        Text(
-                            text = ch.name,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Black,
-                            color = ch.ink,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(Modifier.height(3.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Star,
-                                contentDescription = null,
-                                tint = StorybookColors.GoldMain,
-                                modifier = Modifier.size(15.dp)
-                            )
-                            Text(
-                                text = "${ArabicUtils.toArabicDigits(got)} / ${ArabicUtils.toArabicDigits(ids.size)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Black,
-                                color = ch.ink
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ChapterWorldCard(
-    chapter: ChapterVisual,
-    hadiths: List<Hadith>,
-    progress: UserProgress,
-    frontierId: Int,
-    onOpenStation: (Int) -> Unit
-) {
-    val got = hadiths.count { progress.completedIds.contains(it.id) }
-    val pct = if (hadiths.isEmpty()) 0f else got.toFloat() / hadiths.size.toFloat()
-    val chapterOpen = hadiths.firstOrNull()?.let { progress.isUnlocked(it.id) } ?: true
-
-    ToyCard(
-        containerColor = chapter.bg,
-        borderColor = chapter.border,
-        lipColor = chapter.light,
-        cornerRadius = 28.dp,
-        lipHeight = 7.dp,
-        contentPadding = PaddingValues(0.dp)
-    ) {
-        // Chapter Header with Illustrated Scene
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color.White, chapter.bg)))
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            AssetImage(
-                assetPath = chapter.sceneAsset,
-                contentDescription = chapter.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(155.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .border(3.dp, Color.White, RoundedCornerShape(20.dp))
-            )
-
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Greeting + Profile nudge if unnamed
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Surface(shape = CircleShape, color = chapter.main) {
-                        Text(
-                            text = chapter.ord,
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Black,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
-                    }
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = chapter.name,
-                        style = MaterialTheme.typography.titleLarge,
+                        text = if (progress.hasSetProfileName) {
+                            "أهلاً يا ${progress.heroDisplayName}! واصل مغامرتك"
+                        } else {
+                            "مرحباً بك في رحلة الأربعين النووية!"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black,
-                        color = chapter.ink,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color = StorybookColors.GoldLight
+                    )
+                    Text(
+                        text = "${world.ord} • ${world.name}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFCCFBF1)
                     )
                 }
 
-                Surface(
-                    shape = CircleShape,
-                    color = Color.White,
-                    border = BorderStroke(2.dp, chapter.border)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                if (!progress.hasSetProfileName) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.16f),
+                        border = BorderStroke(1.dp, StorybookColors.GoldLight),
+                        modifier = Modifier
+                            .clickable(onClick = onOpenProfile)
+                            .testTag("setup_profile_chip")
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Star,
-                            contentDescription = null,
-                            tint = StorybookColors.GoldMain,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = "${ArabicUtils.toArabicDigits(got)} / ${ArabicUtils.toArabicDigits(hadiths.size)}",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Black,
-                            color = chapter.ink
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(Icons.Rounded.Edit, contentDescription = null, tint = StorybookColors.GoldLight, modifier = Modifier.size(14.dp))
+                            Text("سجّل اسمك", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = Color.White)
+                        }
                     }
                 }
             }
 
-            // Storyteller speech box
-            Surface(
-                shape = RoundedCornerShape(18.dp),
-                color = Color.White,
-                border = BorderStroke(2.dp, chapter.border)
+            // Current Active Hadith Spotlight Inner Card
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color.White.copy(alpha = 0.12f))
+                    .border(1.5.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(20.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                AssetImage(
+                    assetPath = frontierHadith.poster ?: world.sceneAsset,
+                    contentDescription = frontierHadith.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .border(2.dp, StorybookColors.GoldLight, RoundedCornerShape(16.dp))
+                )
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Surface(shape = CircleShape, color = StorybookColors.GoldMain) {
+                            Text(
+                                text = frontierHadith.header,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Black,
+                                color = StorybookColors.StoryInk,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                        Text(
+                            text = "المحطة ${ArabicUtils.toArabicDigits(frontierHadith.id)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFBAE6FD)
+                        )
+                    }
+                    Text(
+                        text = frontierHadith.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    // 4 Saved Step Mini Indicators
+                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        StepMiniDot("استمع", record.listened, lightMode = false)
+                        StepMiniDot("افهم", record.learned, lightMode = false)
+                        StepMiniDot("سمّع", record.memorized, lightMode = false)
+                        StepMiniDot("العب", record.quizCompleted, lightMode = false)
+                    }
+                }
+            }
+
+            // Big Play CTA
+            CandyButton(
+                onClick = {
+                    if (allDone) onOpenCertificate() else onOpenStation(frontierHadith.id)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("continue_journey_button"),
+                topColor = Color(0xFFFDE047),
+                bottomColor = StorybookColors.GoldMain,
+                borderColor = Color(0xFFFDE047),
+                lipColor = StorybookColors.GoldDark,
+                contentColor = Color(0xFF451A03),
+                contentPadding = PaddingValues(vertical = 12.dp)
+            ) {
+                Icon(
+                    imageVector = if (allDone) Icons.Rounded.EmojiEvents else Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = Color(0xFF451A03),
+                    modifier = Modifier.size(22.dp)
+                )
+                Text(
+                    text = when {
+                        allDone -> "مبارك! افتح شهادة الأربعين الآن"
+                        doneCount == 0 && frontierHadith.id == 1 -> "ابدأ الرحلة من الحديث الأول"
+                        else -> "أكمل المحطة ${ArabicUtils.toArabicDigits(frontierHadith.id)}: ${frontierHadith.title}"
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFF451A03),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WorldExplorerDeck(
+    dataset: HadithDataset,
+    progress: UserProgress,
+    selectedWorldId: Int,
+    onSelectWorld: (Int) -> Unit
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(horizontal = 2.dp)
+    ) {
+        items(StorybookChapters.chapters, key = { it.id }) { world ->
+            val worldIds = remember(dataset, world.id) {
+                dataset.hadiths.filter { it.stage == world.id }.map { it.id }
+            }
+            val got = worldIds.count { progress.completedIds.contains(it) }
+            val isSelected = world.id == selectedWorldId
+            val isOpen = worldIds.firstOrNull()?.let { progress.isUnlocked(it) } ?: true
+
+            Box(
+                modifier = Modifier
+                    .width(168.dp)
+                    .height(126.dp)
+                    .background(
+                        if (isSelected) world.dark else world.border,
+                        RoundedCornerShape(22.dp)
+                    )
+                    .padding(bottom = if (isSelected) 5.dp else 3.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .border(
+                        width = if (isSelected) 3.dp else 1.5.dp,
+                        color = if (isSelected) world.main else Color.White,
+                        shape = RoundedCornerShape(22.dp)
+                    )
+                    .clickable { onSelectWorld(world.id) }
+                    .testTag("world_card_${world.id}")
+            ) {
+                AssetImage(
+                    assetPath = world.sceneAsset,
+                    contentDescription = world.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                // Dark readable bottom scrim
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                0.0f to Color.Black.copy(alpha = 0.12f),
+                                0.45f to Color.Black.copy(alpha = 0.35f),
+                                1.0f to Color.Black.copy(alpha = 0.82f)
+                            )
+                        )
+                )
+
+                // Top Row: World pill & star count
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    AssetImage(
-                        assetPath = chapter.guideAsset,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(chapter.bg)
+                    Surface(
+                        shape = CircleShape,
+                        color = if (isSelected) world.main else Color.Black.copy(alpha = 0.55f)
+                    ) {
+                        Text(
+                            text = world.ord,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.92f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (!isOpen) Icons.Rounded.Lock else Icons.Rounded.Star,
+                                contentDescription = null,
+                                tint = if (!isOpen) StorybookColors.LockedInk else StorybookColors.GoldMain,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = "${ArabicUtils.toArabicDigits(got)}/${ArabicUtils.toArabicDigits(worldIds.size)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Black,
+                                color = StorybookColors.StoryInk
+                            )
+                        }
+                    }
+                }
+
+                // Bottom World Name & Range
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(10.dp)
+                ) {
+                    Text(
+                        text = world.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = if (chapterOpen) chapter.story else "${chapter.story} (يُفتح هذا الفصل بعد إكمال الفصل السابق)",
+                        text = "الأحاديث ${world.shortRange}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = StorybookColors.GoldLight
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SelectedWorldSummaryCard(
+    world: ChapterVisual,
+    worldHadiths: List<Hadith>,
+    progress: UserProgress,
+    activeFilter: MapFilter,
+    onSelectFilter: (MapFilter) -> Unit
+) {
+    val got = worldHadiths.count { progress.completedIds.contains(it.id) }
+    val pct = if (worldHadiths.isEmpty()) 0f else got.toFloat() / worldHadiths.size.toFloat()
+
+    AnimatedContent(targetState = world, label = "worldSwitch") { w ->
+        ToyCard(
+            containerColor = w.bg,
+            borderColor = w.border,
+            lipColor = w.light,
+            cornerRadius = 24.dp,
+            lipHeight = 5.dp,
+            contentPadding = PaddingValues(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                AssetImage(
+                    assetPath = w.guideAsset,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .border(2.5.dp, w.main, CircleShape)
+                )
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = w.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black,
+                            color = w.ink
+                        )
+                        Surface(shape = CircleShape, color = w.main) {
+                            Text(
+                                text = "${ArabicUtils.toArabicDigits(got)} / ${ArabicUtils.toArabicDigits(worldHadiths.size)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        text = w.story,
                         style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = chapter.ink,
-                        modifier = Modifier.weight(1f)
+                        color = w.ink.copy(alpha = 0.88f)
                     )
                 }
             }
 
-            // Chapter progress bar
+            Spacer(Modifier.height(10.dp))
+
+            // World Progress Bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(12.dp)
+                    .height(10.dp)
                     .clip(CircleShape)
                     .background(Color.White)
-                    .border(2.dp, chapter.border, CircleShape)
+                    .border(1.5.dp, w.border, CircleShape)
                     .padding(2.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(fraction = pct.coerceAtLeast(if (got > 0) 0.05f else 0f))
-                        .fillMaxSize()
+                        .fillMaxWidth(pct.coerceAtLeast(if (got > 0) 0.05f else 0f))
+                        .fillMaxHeight()
                         .clip(CircleShape)
-                        .background(chapter.main)
+                        .background(w.main)
                 )
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // Quick Filter Chips
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(MapFilter.entries) { filter ->
+                    val selected = filter == activeFilter
+                    Surface(
+                        shape = CircleShape,
+                        color = if (selected) w.main else Color.White,
+                        border = BorderStroke(1.5.dp, if (selected) w.dark else w.border),
+                        modifier = Modifier
+                            .clickable { onSelectFilter(filter) }
+                            .testTag("map_filter_${filter.name}")
+                    ) {
+                        Text(
+                            text = filter.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Black,
+                            color = if (selected) Color.White else w.ink,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Innovative Stepping-Stone Adventure Milestone Row:
+ * Connects a glowing Storybook Spine (Canvas) to a crisp, expressive Hadith Card
+ * with thumbnail art, full title, saved 4-step progress pills, and mastery badges.
+ */
+@Composable
+private fun AdventureMilestoneRow(
+    hadith: Hadith,
+    world: ChapterVisual,
+    record: HadithProgressRecord,
+    isUnlocked: Boolean,
+    isCompleted: Boolean,
+    isFrontier: Boolean,
+    isFirst: Boolean,
+    isLast: Boolean,
+    prevCompleted: Boolean,
+    onClick: () -> Unit
+) {
+    val infinite = rememberInfiniteTransition(label = "beaconPulse")
+    val beaconScale by infinite.animateFloat(
+        initialValue = 1f,
+        targetValue = if (isFrontier) 1.09f else 1f,
+        animationSpec = infiniteRepeatable(tween(750), RepeatMode.Reverse),
+        label = "beacon"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Vertical Glowing Spine + Medallion Node
+        Box(
+            modifier = Modifier
+                .width(58.dp)
+                .fillMaxHeight(),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val cx = size.width / 2f
+                val cy = size.height / 2f
+                val solidStroke = 6.dp.toPx()
+                val dashEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f)
+
+                if (!isFirst) {
+                    drawLine(
+                        color = if (prevCompleted || isCompleted) world.main else world.border,
+                        start = Offset(cx, 0f),
+                        end = Offset(cx, cy),
+                        strokeWidth = if (prevCompleted || isCompleted) solidStroke else 4.dp.toPx(),
+                        cap = StrokeCap.Round,
+                        pathEffect = if (prevCompleted || isCompleted) null else dashEffect
+                    )
+                }
+                if (!isLast) {
+                    drawLine(
+                        color = if (isCompleted) world.main else world.border,
+                        start = Offset(cx, cy),
+                        end = Offset(cx, size.height),
+                        strokeWidth = if (isCompleted) solidStroke else 4.dp.toPx(),
+                        cap = StrokeCap.Round,
+                        pathEffect = if (isCompleted) null else dashEffect
+                    )
+                }
+            }
+
+            // Medallion Circle
+            val nodeLip = when {
+                !isUnlocked -> StorybookColors.LockedLip
+                isCompleted -> StorybookColors.GoldDark
+                else -> world.dark
+            }
+            val nodeBrush = when {
+                !isUnlocked -> Brush.verticalGradient(listOf(StorybookColors.LockedBg, StorybookColors.LockedBg))
+                isCompleted -> Brush.verticalGradient(listOf(Color(0xFFFDE047), StorybookColors.GoldMain))
+                isFrontier -> Brush.verticalGradient(listOf(world.light, world.main))
+                else -> Brush.verticalGradient(listOf(Color.White, world.bg))
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(if (isFrontier) 52.dp else 46.dp)
+                    .scale(beaconScale)
+                    .background(nodeLip, CircleShape)
+                    .padding(bottom = 3.dp)
+                    .clip(CircleShape)
+                    .background(nodeBrush, CircleShape)
+                    .border(
+                        width = if (isFrontier) 3.dp else 2.dp,
+                        color = if (isUnlocked) Color.White else Color(0xFFFBF6EB),
+                        shape = CircleShape
+                    )
+                    .clickable(enabled = isUnlocked, onClick = onClick),
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    !isUnlocked -> Icon(
+                        imageVector = Icons.Rounded.Lock,
+                        contentDescription = "مغلقة",
+                        tint = StorybookColors.LockedInk,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    isCompleted -> Icon(
+                        imageVector = Icons.Rounded.Star,
+                        contentDescription = "مكتملة",
+                        tint = Color(0xFF5C2C06),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    else -> Text(
+                        text = ArabicUtils.toArabicDigits(hadith.id),
+                        color = if (isFrontier) Color.White else world.ink,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
             }
         }
 
-        // Winding Bezier Adventure Road
-        WindingChapterRoad(
-            chapter = chapter,
-            hadiths = hadiths,
-            progress = progress,
-            frontierId = frontierId,
-            onOpenStation = onOpenStation
+        Spacer(Modifier.width(8.dp))
+
+        // Expressive Station Milestone Card
+        val cardBg = when {
+            !isUnlocked -> Color(0xFFFAF5EA)
+            isFrontier -> Color.White
+            isCompleted -> Color(0xFFFFFDF5)
+            else -> Color.White
+        }
+        val cardBorder = when {
+            !isUnlocked -> Color(0xFFE6DAC3)
+            isFrontier -> world.main
+            isCompleted -> StorybookColors.GoldMain
+            else -> world.border
+        }
+        val cardLip = when {
+            !isUnlocked -> Color(0xFFDFD2B8)
+            isFrontier -> world.dark
+            isCompleted -> StorybookColors.GoldLip
+            else -> world.border
+        }
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .padding(vertical = 5.dp)
+                .background(cardLip, RoundedCornerShape(22.dp))
+                .padding(bottom = if (isUnlocked) 4.dp else 2.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(cardBg)
+                .border(if (isFrontier) 2.5.dp else 1.5.dp, cardBorder, RoundedCornerShape(22.dp))
+                .clickable(enabled = isUnlocked, onClick = onClick)
+                .minimumInteractiveComponentSize()
+                .testTag("station_node_${hadith.id}")
+                .padding(12.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Poster thumbnail if available (Hadiths 1-13)
+                    if (!hadith.poster.isNullOrBlank()) {
+                        AssetImage(
+                            assetPath = hadith.poster,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .border(1.5.dp, cardBorder, RoundedCornerShape(14.dp))
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = hadith.header,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Black,
+                                color = if (isUnlocked) world.dark else StorybookColors.LockedInk
+                            )
+                            if (isFrontier) {
+                                Surface(shape = CircleShape, color = world.main) {
+                                    Text(
+                                        text = "محطتك الآن",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Black,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 1.dp)
+                                    )
+                                }
+                            } else if (isCompleted) {
+                                Surface(shape = CircleShape, color = StorybookColors.EmeraldSoft) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                    ) {
+                                        Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = StorybookColors.EmeraldDark, modifier = Modifier.size(12.dp))
+                                        Text("مكتمل", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = StorybookColors.EmeraldDark)
+                                    }
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = hadith.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black,
+                            color = if (isUnlocked) StorybookColors.StoryInk else StorybookColors.LockedInk,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    if (isUnlocked) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(if (isFrontier) world.main else world.bg),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                contentDescription = "افتح الحديث",
+                                tint = if (isFrontier) Color.White else world.dark,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Bottom Saved Progress Strip (4 Steps + Recitation Accuracy Badge)
+                if (isUnlocked) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            StepMiniDot("استمع", record.listened, lightMode = true)
+                            StepMiniDot("افهم", record.learned, lightMode = true)
+                            StepMiniDot("سمّع", record.memorized, lightMode = true)
+                            StepMiniDot("العب", record.quizCompleted, lightMode = true)
+                        }
+
+                        if (record.bestRecitationAccuracy > 0) {
+                            Surface(
+                                shape = CircleShape,
+                                color = StorybookColors.VioletSoft,
+                                border = BorderStroke(1.dp, StorybookColors.VioletBorder)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Mic, contentDescription = null, tint = StorybookColors.VioletDark, modifier = Modifier.size(11.dp))
+                                    Text(
+                                        text = "${ArabicUtils.toArabicDigits(record.bestRecitationAccuracy)}٪",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Black,
+                                        color = StorybookColors.VioletDark
+                                    )
+                                }
+                            }
+                        } else if (record.puzzleCompleted || record.vocabCompleted) {
+                            Icon(
+                                imageVector = Icons.Rounded.Extension,
+                                contentDescription = "لعبة منجزة",
+                                tint = StorybookColors.TealMain,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "أكمل المحطة السابقة لفتح هذا الحديث",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = StorybookColors.LockedInk
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepMiniDot(label: String, done: Boolean, lightMode: Boolean) {
+    val bg = when {
+        done && lightMode -> StorybookColors.EmeraldSoft
+        done && !lightMode -> StorybookColors.EmeraldMain
+        lightMode -> Color(0xFFF3F4F6)
+        else -> Color.White.copy(alpha = 0.14f)
+    }
+    val textCol = when {
+        done && lightMode -> StorybookColors.EmeraldDark
+        done && !lightMode -> Color.White
+        lightMode -> Color(0xFF6B7280)
+        else -> Color.White.copy(alpha = 0.72f)
+    }
+
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(bg)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        if (done) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                tint = textCol,
+                modifier = Modifier.size(10.dp)
+            )
+        }
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = textCol
         )
     }
 }
 
 @Composable
-private fun WindingChapterRoad(
-    chapter: ChapterVisual,
-    hadiths: List<Hadith>,
-    progress: UserProgress,
-    frontierId: Int,
-    onOpenStation: (Int) -> Unit
-) {
-    if (hadiths.isEmpty()) return
-
-    val wave = remember { floatArrayOf(0f, 0.65f, 1f, 0.65f, 0f, -0.65f, -1f, -0.65f) }
-    val gapDp = 148.dp
-    val topDp = 82.dp
-    val bottomDp = 96.dp
-    val totalHeightDp = topDp + gapDp * (hadiths.size - 1) + bottomDp
-    val decoAssets = remember { listOf("img/boy_guide.png", "img/book_guide.png", "img/girl_guide.png") }
-
-    val infinite = rememberInfiniteTransition(label = "frontierBounce")
-    val bounceOffsetDp by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = -6f,
-        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
-        label = "bounce"
-    )
-
-    // Use LTR coordinate space for deterministic Bezier geometry while keeping RTL text inside nodes
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(totalHeightDp)
-                .padding(horizontal = 8.dp)
-        ) {
-            val density = LocalDensity.current
-            val widthPx = with(density) { maxWidth.toPx() }
-            val gapPx = with(density) { gapDp.toPx() }
-            val topPx = with(density) { topDp.toPx() }
-            val ampPx = ((widthPx - with(density) { 148.dp.toPx() }) / 2f).coerceIn(
-                with(density) { 44.dp.toPx() },
-                with(density) { 140.dp.toPx() }
-            )
-
-            val points = remember(hadiths, widthPx) {
-                hadiths.mapIndexed { idx, h ->
-                    val factor = wave[(h.id - 1) % wave.size]
-                    val x = widthPx / 2f + factor * ampPx
-                    val y = topPx + idx * gapPx
-                    Triple(h, Offset(x, y), factor)
-                }
-            }
-
-            // Road Bezier Canvas
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val outlineStroke = Stroke(width = 30.dp.toPx(), cap = StrokeCap.Round)
-                val bedStroke = Stroke(width = 24.dp.toPx(), cap = StrokeCap.Round)
-                val doneStroke = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
-                val shineStroke = Stroke(
-                    width = 3.5.dp.toPx(),
-                    cap = StrokeCap.Round,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 18f), 0f)
-                )
-                val dashStroke = Stroke(
-                    width = 4.5.dp.toPx(),
-                    cap = StrokeCap.Round,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 18f), 0f)
-                )
-
-                for (i in 0 until points.lastIndex) {
-                    val p = points[i].second
-                    val q = points[i + 1].second
-                    val segPath = Path().apply {
-                        moveTo(p.x, p.y)
-                        cubicTo(p.x, p.y + gapPx / 2f, q.x, q.y - gapPx / 2f, q.x, q.y)
-                    }
-                    val isSegDone = progress.completedIds.contains(points[i].first.id)
-                    drawPath(segPath, color = chapter.border, style = outlineStroke)
-                    drawPath(segPath, color = Color.White.copy(alpha = 0.94f), style = bedStroke)
-                    if (isSegDone) {
-                        drawPath(segPath, color = chapter.main.copy(alpha = 0.85f), style = doneStroke)
-                        drawPath(segPath, color = StorybookColors.GoldLight, style = shineStroke)
-                    } else {
-                        drawPath(segPath, color = chapter.main.copy(alpha = 0.42f), style = dashStroke)
-                    }
-                }
-            }
-
-            // Decorative floating companion medallions at road curves
-            points.forEachIndexed { idx, (h, pos, factor) ->
-                if (abs(factor) >= 0.99f && idx % 2 == 0) {
-                    val decoSize = 54.dp
-                    val decoSizePx = with(density) { decoSize.toPx() }
-                    val decoX = widthPx / 2f - factor * ampPx * 0.78f - decoSizePx / 2f
-                    val decoY = pos.y - decoSizePx / 2f
-                    AssetImage(
-                        assetPath = decoAssets[(h.id + chapter.id) % decoAssets.size],
-                        contentDescription = null,
-                        modifier = Modifier
-                            .offset { IntOffset(decoX.roundToInt(), decoY.roundToInt()) }
-                            .size(decoSize)
-                            .clip(CircleShape)
-                            .background(Color.White)
-                            .border(3.dp, chapter.border, CircleShape)
-                    )
-                }
-            }
-
-            // Interactive Station Nodes
-            points.forEach { (h, pos, _) ->
-                val isDone = progress.completedIds.contains(h.id)
-                val isRecited = progress.recitedIds.contains(h.id)
-                val isUnlocked = progress.isUnlocked(h.id)
-                val isFrontier = h.id == frontierId && !isDone
-                val nodeSize = if (isFrontier) 76.dp else 64.dp
-                val wrapWidth = 132.dp
-                val wrapWidthPx = with(density) { wrapWidth.toPx() }
-                val halfNodePx = with(density) { (nodeSize / 2).toPx() }
-                val extraTopBubblePx = if (isFrontier) with(density) { 36.dp.toPx() } else 0f
-
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    Column(
-                        modifier = Modifier
-                            .offset {
-                                IntOffset(
-                                    x = (pos.x - wrapWidthPx / 2f).roundToInt(),
-                                    y = (pos.y - halfNodePx - extraTopBubblePx).roundToInt()
-                                )
-                            }
-                            .width(wrapWidth),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        if (isFrontier) {
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = StorybookColors.StoryNavy,
-                                border = BorderStroke(2.dp, Color(0xFF38BDF8)),
-                                modifier = Modifier
-                                    .offset(y = bounceOffsetDp.dp)
-                                    .padding(bottom = 6.dp)
-                            ) {
-                                Text(
-                                    text = if (progress.completedIds.isEmpty()) "ابدأ من هنا!" else "محطتك التالية!",
-                                    color = StorybookColors.GoldLight,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Black,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-
-                        // Circular 3D Station Button
-                        val lipColor = when {
-                            !isUnlocked -> StorybookColors.LockedLip
-                            isDone -> StorybookColors.GoldDark
-                            else -> chapter.dark
-                        }
-                        val fillBrush = when {
-                            !isUnlocked -> Brush.verticalGradient(listOf(StorybookColors.LockedBg, StorybookColors.LockedBg))
-                            isDone -> Brush.verticalGradient(listOf(Color(0xFFFDE047), Color(0xFFF59E0B)))
-                            isFrontier -> Brush.verticalGradient(listOf(chapter.light, chapter.main))
-                            else -> Brush.verticalGradient(listOf(Color.White, Color(0xFFFFFDF8)))
-                        }
-                        val borderCol = when {
-                            !isUnlocked -> Color(0xFFFBF6EB)
-                            isDone -> Color.White
-                            isFrontier -> Color.White
-                            else -> chapter.main
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .offset(y = if (isFrontier) bounceOffsetDp.dp else 0.dp)
-                                .size(nodeSize)
-                                .minimumInteractiveComponentSize()
-                                .testTag("station_node_${h.id}")
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(lipColor, CircleShape)
-                                    .padding(bottom = 5.dp)
-                                    .clip(CircleShape)
-                                    .background(fillBrush, CircleShape)
-                                    .border(3.5.dp, borderCol, CircleShape)
-                                    .clickable(enabled = isUnlocked) { onOpenStation(h.id) },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                when {
-                                    !isUnlocked -> Icon(
-                                        imageVector = Icons.Rounded.Lock,
-                                        contentDescription = "محطة مغلقة",
-                                        tint = StorybookColors.LockedInk,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                    isDone -> Icon(
-                                        imageVector = Icons.Rounded.Star,
-                                        contentDescription = "نجمة مكتسبة",
-                                        tint = Color(0xFF5C2C06),
-                                        modifier = Modifier.size(30.dp)
-                                    )
-                                    else -> Text(
-                                        text = ArabicUtils.toArabicDigits(h.id),
-                                        color = if (isFrontier) Color.White else chapter.ink,
-                                        fontSize = 21.sp,
-                                        fontWeight = FontWeight.Black
-                                    )
-                                }
-                            }
-
-                            // Done checkmark mini-badge
-                            if (isDone) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopStart)
-                                        .size(22.dp)
-                                        .clip(CircleShape)
-                                        .background(StorybookColors.EmeraldDark)
-                                        .border(2.dp, Color.White, CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Check,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(13.dp)
-                                    )
-                                }
-                            }
-                            // Voice-recited mastery badge
-                            if (isRecited) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .size(22.dp)
-                                        .clip(CircleShape)
-                                        .background(StorybookColors.VioletMain)
-                                        .border(2.dp, Color.White, CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Mic,
-                                        contentDescription = "مُسمَّع بالصوت",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(Modifier.height(5.dp))
-
-                        // Station Title Pill
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = if (isUnlocked) Color.White else Color(0xFFFAF5EA),
-                            border = BorderStroke(
-                                1.5.dp,
-                                if (isUnlocked) chapter.border else Color(0xFFE6DAC3)
-                            ),
-                            shadowElevation = 1.dp
-                        ) {
-                            Text(
-                                text = h.title,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = if (isUnlocked) StorybookColors.StoryInk else StorybookColors.LockedInk,
-                                textAlign = TextAlign.Center,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TreasureChestCard(
+private fun TreasureRewardBanner(
     heroName: String,
     doneCount: Int,
     total: Int,
@@ -1130,136 +1252,61 @@ private fun TreasureChestCard(
         containerColor = Color(0xFFFFF7D6),
         borderColor = Color(0xFFEAB308),
         lipColor = Color(0xFFCA8A04),
-        contentPadding = PaddingValues(20.dp)
+        contentPadding = PaddingValues(16.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
+                    .size(58.dp)
+                    .clip(RoundedCornerShape(18.dp))
                     .background(Brush.verticalGradient(listOf(StorybookColors.GoldLight, StorybookColors.GoldMain)))
-                    .border(3.dp, StorybookColors.GoldDark, CircleShape),
+                    .border(2.5.dp, StorybookColors.GoldDark, RoundedCornerShape(18.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (left == 0) Icons.Rounded.AutoAwesome else Icons.Rounded.EmojiEvents,
                     contentDescription = "صندوق الكنز",
                     tint = StorybookColors.GoldDeep,
-                    modifier = Modifier.size(38.dp)
+                    modifier = Modifier.size(30.dp)
                 )
             }
-            RibbonBadge(text = "نهاية الحكاية: صندوق الكنز")
-            Text(
-                text = if (left <= 0) {
-                    "مبارك يا $heroName! جمعت النجوم الـ ${ArabicUtils.toArabicDigits(total)} كلها وانفتح صندوق الكنز. اضغط لتأخذ شهادتك!"
-                } else {
-                    "بقي لك ${ArabicUtils.toArabicDigits(left)} نجمة لتفتح الصندوق وتنال شهادة البطل باسمك!"
-                },
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = StorybookColors.GoldDeep,
-                textAlign = TextAlign.Center
-            )
-            CandyButton(
-                onClick = onOpenCertificate,
-                modifier = Modifier.testTag("treasure_certificate_button"),
-                topColor = Color(0xFFFB7185),
-                bottomColor = Color(0xFFE11D48),
-                borderColor = StorybookColors.CoralDark,
-                lipColor = StorybookColors.CoralDeep
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.EmojiEvents,
-                    contentDescription = null,
-                    tint = StorybookColors.GoldLight,
-                    modifier = Modifier.size(20.dp)
+
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = "صندوق الكنز وشهادة البطل",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Black,
+                    color = StorybookColors.GoldDeep
                 )
                 Text(
-                    text = "افتح صندوق الكنز (الشهادة)",
-                    fontWeight = FontWeight.Black,
-                    color = Color.White
+                    text = if (left <= 0) {
+                        "مبارك يا $heroName! أتممت الـ ${ArabicUtils.toArabicDigits(total)} حديثاً — خذ شهادتك الآن!"
+                    } else {
+                        "بقي لك ${ArabicUtils.toArabicDigits(left)} نجمة لفتح شهادتك الذهبية باسمك."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = StorybookColors.StoryMuted
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun TeacherToolsCard(
-    teacherMode: Boolean,
-    onToggleTeacherMode: (Boolean) -> Unit,
-    onRequestReset: () -> Unit
-) {
-    Surface(
-        shape = RoundedCornerShape(22.dp),
-        color = Color.White.copy(alpha = 0.9f),
-        border = BorderStroke(2.dp, Color(0xFFFDE68A)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Spacer(Modifier.height(10.dp))
+        CandyButton(
+            onClick = onOpenCertificate,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("treasure_certificate_button"),
+            topColor = Color(0xFFFB7185),
+            bottomColor = Color(0xFFE11D48),
+            borderColor = StorybookColors.CoralDark,
+            lipColor = StorybookColors.CoralDeep,
+            contentPadding = PaddingValues(vertical = 10.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.School,
-                        contentDescription = null,
-                        tint = StorybookColors.SkyDark,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        text = "وضع المعلم / ولي الأمر (فتح كل المحطات)",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Black,
-                        color = StorybookColors.GoldDeep
-                    )
-                }
-                Switch(
-                    checked = teacherMode,
-                    onCheckedChange = onToggleTeacherMode,
-                    modifier = Modifier.testTag("teacher_mode_switch"),
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = StorybookColors.SkyAccent
-                    )
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(
-                    onClick = onRequestReset,
-                    modifier = Modifier.testTag("reset_progress_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.RestartAlt,
-                        contentDescription = null,
-                        tint = StorybookColors.CoralDark,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = "إعادة بدء الحكاية من البداية",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Black,
-                        color = StorybookColors.CoralDark
-                    )
-                }
-            }
+            Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = StorybookColors.GoldLight, modifier = Modifier.size(18.dp))
+            Text("عرض شهادة البطل", fontWeight = FontWeight.Black, color = Color.White)
         }
     }
 }

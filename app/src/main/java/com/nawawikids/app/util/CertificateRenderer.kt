@@ -57,7 +57,7 @@ object CertificateRenderer {
         val typeface = try {
             Typeface.createFromAsset(context.assets, "fonts/Amiri-Bold.ttf")
         } catch (_: Exception) {
-            ResourcesCompat.getFont(context, R.font.amiri) ?: Typeface.DEFAULT_BOLD
+            ResourcesCompat.getFont(context, R.font.amiri_bold) ?: Typeface.DEFAULT_BOLD
         }
 
         val cleanName = rawStudentName.trim().take(50).ifBlank { "الطالب المتفوق" }

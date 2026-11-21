@@ -70,11 +70,6 @@ data class Exercise(
     val feedback: String
 )
 
-/**
- * Extensible Sunnah Book architecture so additional prophetic books
- * (Riyad as-Salihin, Al-Adab al-Mufrad, Umdat al-Ahkam, etc.) can plug directly
- * into the same Journey + Audio + Live Recitation + Games engine.
- */
 data class SunnahBook(
     val id: String,
     val title: String,
@@ -93,6 +88,7 @@ data class ChapterVisual(
     val id: Int,
     val ord: String,
     val name: String,
+    val shortRange: String,
     val story: String,
     val sceneAsset: String,
     val guideAsset: String,
@@ -103,6 +99,16 @@ data class ChapterVisual(
     val bg: Color,
     val border: Color
 )
+
+enum class AvatarChoice(val key: String, val displayName: String, val assetPath: String) {
+    BOY_OMAR("boy", "عمر", "img/boy_guide.png"),
+    GIRL_MARYAM("girl", "مريم", "img/girl_guide.png");
+
+    companion object {
+        fun fromKey(key: String?): AvatarChoice =
+            entries.firstOrNull { it.key == key } ?: BOY_OMAR
+    }
+}
 
 enum class StationTab {
     LISTEN,
@@ -133,23 +139,89 @@ enum class QuizMode {
     VOCAB_MATCH
 }
 
+enum class MapFilter(val label: String) {
+    ALL("الكل"),
+    IN_PROGRESS("مفتوحة"),
+    COMPLETED("مكتملة"),
+    NEEDS_RECITATION("تحتاج تسميع")
+}
+
+/**
+ * Detailed persisted record for each Hadith so every step the child completes
+ * (Listen, Learn, Voice Recitation, Quiz, Mini-Games) is permanently remembered.
+ */
+@Serializable
+data class HadithProgressRecord(
+    val listened: Boolean = false,
+    val learned: Boolean = false,
+    val memorized: Boolean = false,
+    val bestRecitationAccuracy: Int = 0,
+    val quizCompleted: Boolean = false,
+    val puzzleCompleted: Boolean = false,
+    val vocabCompleted: Boolean = false
+) {
+    val completedStepsCount: Int
+        get() = (if (listened) 1 else 0) +
+            (if (learned) 1 else 0) +
+            (if (memorized) 1 else 0) +
+            (if (quizCompleted) 1 else 0)
+
+    val masteryStars: Int
+        get() = (if (listened && learned) 1 else 0) +
+            (if (memorized) 1 else 0) +
+            (if (quizCompleted) 1 else 0)
+}
+
+data class HeroRank(
+    val title: String,
+    val nextMilestoneStars: Int,
+    val badgeColor: Color
+)
+
 data class UserProgress(
     val completedIds: Set<Int> = emptySet(),
     val recitedIds: Set<Int> = emptySet(),
     val puzzleSolvedIds: Set<Int> = emptySet(),
     val vocabSolvedIds: Set<Int> = emptySet(),
+    val hadithRecords: Map<Int, HadithProgressRecord> = emptyMap(),
     val unlockedUpTo: Int = 1,
     val currentId: Int = 1,
     val teacherMode: Boolean = false,
     val sfxMuted: Boolean = false,
     val fontSize: FontSizeOption = FontSizeOption.MEDIUM,
-    val studentName: String = ""
+    val studentName: String = "",
+    val studentAge: Int? = null,
+    val avatarChoice: AvatarChoice = AvatarChoice.BOY_OMAR,
+    val streakDays: Int = 1,
+    val lastActiveDate: String = "",
+    val totalXp: Int = 0,
+    val hasSeenOnboarding: Boolean = false
 ) {
     val heroDisplayName: String
         get() {
             val trimmed = studentName.trim()
             return if (trimmed.length >= 2) trimmed else "بطل"
         }
+
+    val hasSetProfileName: Boolean
+        get() = studentName.trim().length >= 2
+
+    val rank: HeroRank
+        get() = when {
+            completedIds.size >= 36 -> HeroRank("حافظ الأربعين", 42, Color(0xFFF59E0B))
+            completedIds.size >= 25 -> HeroRank("فارس السنة", 36, Color(0xFF8B5CF6))
+            completedIds.size >= 15 -> HeroRank("نجم الأخلاق", 25, Color(0xFFF43F5E))
+            completedIds.size >= 5 -> HeroRank("صاحب الهمة", 15, Color(0xFF0EA5E9))
+            else -> HeroRank("مُستكشف النور", 5, Color(0xFF14B8A6))
+        }
+
+    fun recordFor(hadithId: Int): HadithProgressRecord =
+        hadithRecords[hadithId] ?: HadithProgressRecord(
+            memorized = recitedIds.contains(hadithId),
+            quizCompleted = completedIds.contains(hadithId),
+            puzzleCompleted = puzzleSolvedIds.contains(hadithId),
+            vocabCompleted = vocabSolvedIds.contains(hadithId)
+        )
 
     fun isUnlocked(hadithId: Int): Boolean {
         if (teacherMode) return true
@@ -168,8 +240,9 @@ object StorybookChapters {
     val chapters: List<ChapterVisual> = listOf(
         ChapterVisual(
             id = 1,
-            ord = "الفصل الأول",
+            ord = "العالم ١",
             name = "عالم الإخلاص",
+            shortRange = "١ – ١٠",
             story = "تبدأ حكايتنا هنا: نتعلم أركان ديننا الجميل، وأن نجعل كل أعمالنا خالصةً لله.",
             sceneAsset = "img/scene_1.webp",
             guideAsset = "img/boy_guide.png",
@@ -182,8 +255,9 @@ object StorybookChapters {
         ),
         ChapterVisual(
             id = 2,
-            ord = "الفصل الثاني",
+            ord = "العالم ٢",
             name = "حديقة الأخلاق",
+            shortRange = "١١ – ٢٠",
             story = "ندخل الحديقة لنزرع الرحمة والصدق وحب الخير لكل الناس.",
             sceneAsset = "img/scene_2.webp",
             guideAsset = "img/girl_guide.png",
@@ -196,8 +270,9 @@ object StorybookChapters {
         ),
         ChapterVisual(
             id = 3,
-            ord = "الفصل الثالث",
+            ord = "العالم ٣",
             name = "واحة الطاعات",
+            shortRange = "٢١ – ٣١",
             story = "في الواحة نتعلم الاستقامة، ونكتشف أبواب الخير الكثيرة المفتوحة لنا.",
             sceneAsset = "img/scene_3.webp",
             guideAsset = "img/boy_guide.png",
@@ -210,8 +285,9 @@ object StorybookChapters {
         ),
         ChapterVisual(
             id = 4,
-            ord = "الفصل الرابع",
+            ord = "العالم ٤",
             name = "سماء الآداب",
+            shortRange = "٣٢ – ٤٢",
             story = "نطير إلى السماء الأخيرة لنتزيّن بآداب المسلم ونفرح بسعة رحمة الله.",
             sceneAsset = "img/scene_4.webp",
             guideAsset = "img/girl_guide.png",

@@ -10,9 +10,11 @@ import com.nawawikids.app.audio.SoundEffectsPlayer
 import com.nawawikids.app.audio.VoiceRecorderController
 import com.nawawikids.app.audio.VoiceRecorderState
 import com.nawawikids.app.data.SunnahRepository
+import com.nawawikids.app.model.AvatarChoice
 import com.nawawikids.app.model.FontSizeOption
 import com.nawawikids.app.model.Hadith
 import com.nawawikids.app.model.HadithDataset
+import com.nawawikids.app.model.MapFilter
 import com.nawawikids.app.model.MemorizeMode
 import com.nawawikids.app.model.QuizMode
 import com.nawawikids.app.model.StationTab
@@ -39,13 +41,11 @@ data class StationUiState(
     val visitedTabs: Set<StationTab> = setOf(StationTab.LISTEN),
     val memorizeMode: MemorizeMode = MemorizeMode.LIVE_VOICE,
     val quizMode: QuizMode = QuizMode.HERO_QUIZ,
-    // Progressive memorization state
     val memHidePercent: Int = 35,
     val memSeed: Int = 1,
     val memHiddenIndices: Set<Int> = emptySet(),
     val memPeekedIndices: Set<Int> = emptySet(),
     val firstLetterHint: Boolean = false,
-    // Quiz state for current hadith
     val quizSolvedQuestions: Set<Int> = emptySet(),
     val quizWrongOptionsByQuestion: Map<Int, Set<Int>> = emptyMap(),
     val lastEarnedHadithId: Int? = null
@@ -57,15 +57,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     private val sfxPlayer = SoundEffectsPlayer(viewModelScope)
     private val audioController = HadithAudioController(application, viewModelScope)
     private val recorderController = VoiceRecorderController(application, viewModelScope)
-    private val liveRecitationController = LiveRecitationController(
-        context = application,
-        onWordRevealed = { sfxPlayer.play(SfxKind.CORRECT) },
-        onMistakeDetected = { sfxPlayer.play(SfxKind.WRONG) },
-        onRecitationCompleted = { hadithId ->
-            sfxPlayer.play(SfxKind.UNLOCK)
-            viewModelScope.launch { repository.markRecitationMastered(hadithId) }
-        }
-    )
+    private lateinit var liveRecitationController: LiveRecitationController
 
     val books: List<SunnahBook> = repository.sunnahBooks
 
@@ -75,23 +67,61 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     private val _progress = MutableStateFlow(UserProgress())
     val progress: StateFlow<UserProgress> = _progress.asStateFlow()
 
+    private val _progressLoaded = MutableStateFlow(false)
+    val progressLoaded: StateFlow<Boolean> = _progressLoaded.asStateFlow()
+
     private val _station = MutableStateFlow(StationUiState())
     val station: StateFlow<StationUiState> = _station.asStateFlow()
 
+    private val _selectedWorldId = MutableStateFlow(1)
+    val selectedWorldId: StateFlow<Int> = _selectedWorldId.asStateFlow()
+
+    private val _mapFilter = MutableStateFlow(MapFilter.ALL)
+    val mapFilter: StateFlow<MapFilter> = _mapFilter.asStateFlow()
+
     val audioState: StateFlow<AudioPlaybackState> = audioController.state
-    val recitationState: StateFlow<LiveRecitationState> = liveRecitationController.state
+    val recitationState: StateFlow<LiveRecitationState>
+        get() = liveRecitationController.state
     val recorderState: StateFlow<VoiceRecorderState> = recorderController.state
 
     private var hadithsById: Map<Int, Hadith> = emptyMap()
+    private var initialWorldSynced = false
 
     init {
+        liveRecitationController = LiveRecitationController(
+            context = application,
+            onWordRevealed = { sfxPlayer.play(SfxKind.CORRECT) },
+            onMistakeDetected = { sfxPlayer.play(SfxKind.WRONG) },
+            onRecitationCompleted = { hadithId ->
+                val accuracy = liveRecitationController.state.value.accuracyPercent
+                sfxPlayer.play(SfxKind.UNLOCK)
+                viewModelScope.launch { repository.markRecitationMastered(hadithId, accuracy) }
+            }
+        )
+
+        viewModelScope.launch {
+            repository.touchDailyActivity()
+        }
+
         viewModelScope.launch {
             repository.progressFlow.collect { prog ->
                 _progress.value = prog
+                _progressLoaded.value = true
                 sfxPlayer.muted = prog.sfxMuted
+                if (!initialWorldSynced && hadithsById.isNotEmpty()) {
+                    syncSelectedWorldToFrontier(prog)
+                }
             }
         }
         loadDataset()
+    }
+
+    private fun syncSelectedWorldToFrontier(prog: UserProgress) {
+        val frontierHadith = hadithsById[prog.frontierId(hadithsById.size.coerceAtLeast(42))]
+        if (frontierHadith != null) {
+            _selectedWorldId.value = frontierHadith.stage
+            initialWorldSynced = true
+        }
     }
 
     fun loadDataset() {
@@ -101,6 +131,9 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
                 val data = repository.loadBookDataset("nawawi_40")
                 hadithsById = data.hadiths.associateBy { it.id }
                 _datasetState.value = DatasetLoadState.Ready(data)
+                if (!initialWorldSynced) {
+                    syncSelectedWorldToFrontier(_progress.value)
+                }
             } catch (e: Exception) {
                 _datasetState.value = DatasetLoadState.Error(
                     e.message ?: "تعذر تحميل بيانات الأربعين النووية"
@@ -109,10 +142,17 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun getHadith(id: Int): Hadith? = hadithsById[id]
+    fun selectWorld(worldId: Int) {
+        sfxPlayer.play(SfxKind.POP)
+        _selectedWorldId.value = worldId.coerceIn(1, 4)
+    }
 
-    fun getAllHadiths(): List<Hadith> =
-        (_datasetState.value as? DatasetLoadState.Ready)?.dataset?.hadiths ?: emptyList()
+    fun selectMapFilter(filter: MapFilter) {
+        sfxPlayer.play(SfxKind.POP)
+        _mapFilter.value = filter
+    }
+
+    fun getHadith(id: Int): Hadith? = hadithsById[id]
 
     fun openStation(hadithId: Int) {
         val h = hadithsById[hadithId] ?: return
@@ -123,13 +163,22 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         liveRecitationController.prepareForHadith(h.id, h.words)
         recorderController.resetForNewHadith()
 
+        val savedRecord = _progress.value.recordFor(h.id)
+        val restoredVisited = buildSet {
+            add(StationTab.LISTEN)
+            if (savedRecord.learned) add(StationTab.LEARN)
+            if (savedRecord.memorized) add(StationTab.MEMORIZE)
+            if (savedRecord.quizCompleted) add(StationTab.QUIZ)
+        }
+
         val initialHidePct = 35
         val hidden = ArabicUtils.computeHiddenIndices(h.words.size, h.id, 1, initialHidePct)
 
+        _selectedWorldId.value = h.stage
         _station.value = StationUiState(
             activeHadithId = h.id,
             activeTab = StationTab.LISTEN,
-            visitedTabs = setOf(StationTab.LISTEN),
+            visitedTabs = restoredVisited,
             memorizeMode = MemorizeMode.LIVE_VOICE,
             quizMode = QuizMode.HERO_QUIZ,
             memHidePercent = initialHidePct,
@@ -142,7 +191,10 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
             lastEarnedHadithId = null
         )
 
-        viewModelScope.launch { repository.setCurrentHadith(h.id) }
+        viewModelScope.launch {
+            repository.setCurrentHadith(h.id)
+            repository.markStepVisited(h.id, listened = true)
+        }
     }
 
     fun onExitStation() {
@@ -165,6 +217,10 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
                 visitedTabs = it.visitedTabs + tab
             )
         }
+        val activeId = _station.value.activeHadithId
+        if (tab == StationTab.LEARN) {
+            viewModelScope.launch { repository.markStepVisited(activeId, learned = true) }
+        }
     }
 
     fun setMemorizeMode(mode: MemorizeMode) {
@@ -181,7 +237,22 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         _station.update { it.copy(quizMode = mode) }
     }
 
-    // ---- Progress & Settings ----
+    // ---- Student Profile & Settings ----
+
+    fun updateStudentProfile(name: String, age: Int?, avatar: AvatarChoice) {
+        sfxPlayer.play(SfxKind.CORRECT)
+        viewModelScope.launch { repository.saveStudentProfile(name, age, avatar) }
+    }
+
+    fun completeOnboarding(name: String, age: Int?, avatar: AvatarChoice) {
+        sfxPlayer.play(SfxKind.UNLOCK)
+        viewModelScope.launch { repository.completeOnboarding(name, age, avatar) }
+    }
+
+    fun skipOnboarding() {
+        sfxPlayer.play(SfxKind.POP)
+        viewModelScope.launch { repository.markOnboardingSeen() }
+    }
 
     fun updateStudentName(name: String) {
         viewModelScope.launch { repository.saveStudentName(name) }
@@ -207,15 +278,19 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     fun resetAllProgress() {
         stopAllMedia()
         sfxPlayer.play(SfxKind.POP)
+        _selectedWorldId.value = 1
         viewModelScope.launch { repository.resetProgress() }
     }
 
-    // ---- Audio Controls (Step 1 & Recitation Helper) ----
+    // ---- Audio Controls ----
 
     fun togglePlayPause() {
         liveRecitationController.stopListening()
         recorderController.stopPlayback()
         audioController.togglePlayPause()
+        viewModelScope.launch {
+            repository.markStepVisited(_station.value.activeHadithId, listened = true)
+        }
     }
 
     fun playQariFromStart() {
@@ -233,6 +308,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun rewind5Seconds() = audioController.rewind5Seconds()
+
     fun cycleSpeed() {
         sfxPlayer.play(SfxKind.POP)
         audioController.cycleSpeed()
@@ -243,10 +319,6 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         audioController.cycleLoopMode()
     }
 
-    /**
-     * Plays the Qari's exact pronunciation of the current target word (or a short 4-word phrase)
-     * during Live Voice Recitation so the child can listen and repeat accurately!
-     */
     fun playWordOrPhraseHint(wordIndex: Int, wordCount: Int = 1) {
         val h = hadithsById[_station.value.activeHadithId] ?: return
         if (wordIndex !in h.words.indices) return
@@ -256,7 +328,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         audioController.playSlice(h.words[wordIndex].s, h.words[endIdx].e)
     }
 
-    // ---- Live Voice Recitation Controls (Step 3 Mode A) ----
+    // ---- Live Voice Recitation ----
 
     fun startLiveRecitation() {
         audioController.pause()
@@ -288,7 +360,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         liveRecitationController.resetRecitation()
     }
 
-    // ---- Progressive Memorization & Voice Recorder (Step 3 Mode B) ----
+    // ---- Progressive Masking & Voice Recorder ----
 
     fun setMemHidePercent(pct: Int) {
         val h = hadithsById[_station.value.activeHadithId] ?: return
@@ -407,7 +479,6 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
 
     fun playGameCorrectSfx() = sfxPlayer.play(SfxKind.CORRECT)
     fun playGameWrongSfx() = sfxPlayer.play(SfxKind.WRONG)
-    fun playPopSfx() = sfxPlayer.play(SfxKind.POP)
 
     private fun stopAllMedia() {
         audioController.stopAndReset()

@@ -42,7 +42,9 @@ import com.nawawikids.app.ui.components.StorybookBackground
 import com.nawawikids.app.ui.components.ToyCard
 import com.nawawikids.app.ui.screens.CertificateDialog
 import com.nawawikids.app.ui.screens.JourneyMapScreen
+import com.nawawikids.app.ui.screens.OnboardingScreen
 import com.nawawikids.app.ui.screens.StationScreen
+import com.nawawikids.app.ui.screens.StudentProfileDialog
 import com.nawawikids.app.ui.screens.SunnahLibraryDialog
 import com.nawawikids.app.ui.theme.NawawiKidsTheme
 import com.nawawikids.app.ui.theme.StorybookColors
@@ -74,11 +76,15 @@ class MainActivity : ComponentActivity() {
 private fun NawawiKidsApp(viewModel: JourneyViewModel = viewModel()) {
     val datasetState by viewModel.datasetState.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
+    val progressLoaded by viewModel.progressLoaded.collectAsStateWithLifecycle()
     val stationState by viewModel.station.collectAsStateWithLifecycle()
+    val selectedWorldId by viewModel.selectedWorldId.collectAsStateWithLifecycle()
+    val mapFilter by viewModel.mapFilter.collectAsStateWithLifecycle()
     val audioState by viewModel.audioState.collectAsStateWithLifecycle()
     val recitationState by viewModel.recitationState.collectAsStateWithLifecycle()
     val recorderState by viewModel.recorderState.collectAsStateWithLifecycle()
 
+    var showProfile by remember { mutableStateOf(false) }
     var showCertificate by remember { mutableStateOf(false) }
     var showLibrary by remember { mutableStateOf(false) }
 
@@ -154,25 +160,41 @@ private fun NawawiKidsApp(viewModel: JourneyViewModel = viewModel()) {
         }
 
         is DatasetLoadState.Ready -> {
-            val navController = rememberNavController()
-            val dataset = ds.dataset
+            if (!progressLoaded) {
+                StorybookBackground {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = StorybookColors.TealMain)
+                    }
+                }
+            } else if (!progress.hasSeenOnboarding) {
+                OnboardingScreen(
+                    initialName = progress.studentName,
+                    initialAge = progress.studentAge,
+                    initialAvatar = progress.avatarChoice,
+                    onFinish = viewModel::completeOnboarding,
+                    onSkip = viewModel::skipOnboarding
+                )
+            } else {
+                val navController = rememberNavController()
+                val dataset = ds.dataset
 
-            NavHost(
-                navController = navController,
-                startDestination = JourneyRoute
-            ) {
+                NavHost(
+                    navController = navController,
+                    startDestination = JourneyRoute
+                ) {
                 composable<JourneyRoute> {
                     JourneyMapScreen(
                         dataset = dataset,
                         progress = progress,
+                        selectedWorldId = selectedWorldId,
+                        mapFilter = mapFilter,
+                        onSelectWorld = viewModel::selectWorld,
+                        onSelectFilter = viewModel::selectMapFilter,
                         onOpenStation = { id ->
                             viewModel.openStation(id)
                             navController.navigate(StationRoute(id))
                         },
-                        onNameChange = viewModel::updateStudentName,
-                        onToggleTeacherMode = viewModel::toggleTeacherMode,
-                        onToggleSfx = viewModel::toggleSfxMute,
-                        onResetProgress = viewModel::resetAllProgress,
+                        onOpenProfile = { showProfile = true },
                         onOpenCertificate = { showCertificate = true },
                         onOpenLibrary = { showLibrary = true }
                     )
@@ -235,6 +257,18 @@ private fun NawawiKidsApp(viewModel: JourneyViewModel = viewModel()) {
                 }
             }
 
+            if (showProfile) {
+                StudentProfileDialog(
+                    progress = progress,
+                    totalHadiths = dataset.hadiths.size.coerceAtLeast(42),
+                    onSaveProfile = viewModel::updateStudentProfile,
+                    onToggleTeacherMode = viewModel::toggleTeacherMode,
+                    onToggleSfx = viewModel::toggleSfxMute,
+                    onResetProgress = viewModel::resetAllProgress,
+                    onDismiss = { showProfile = false }
+                )
+            }
+
             if (showCertificate) {
                 CertificateDialog(
                     progress = progress,
@@ -244,12 +278,13 @@ private fun NawawiKidsApp(viewModel: JourneyViewModel = viewModel()) {
                 )
             }
 
-            if (showLibrary) {
-                SunnahLibraryDialog(
-                    books = viewModel.books,
-                    completedNawawiCount = progress.completedIds.size,
-                    onDismiss = { showLibrary = false }
-                )
+                if (showLibrary) {
+                    SunnahLibraryDialog(
+                        books = viewModel.books,
+                        completedNawawiCount = progress.completedIds.size,
+                        onDismiss = { showLibrary = false }
+                    )
+                }
             }
         }
     }
