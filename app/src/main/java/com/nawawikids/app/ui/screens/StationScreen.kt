@@ -152,11 +152,9 @@ fun StationScreen(
 
     StorybookBackground {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = statusPadding)
+            modifier = Modifier.fillMaxSize()
         ) {
-            // Top Navigation Bar
+            // Top Navigation Bar (extends seamlessly behind status bar)
             Surface(
                 color = Color.White.copy(alpha = 0.96f),
                 shadowElevation = 3.dp,
@@ -165,6 +163,7 @@ fun StationScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(top = statusPadding)
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
