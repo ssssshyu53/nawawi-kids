@@ -18,9 +18,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -88,18 +89,11 @@ fun SunnahLibraryDialog(
                     }
                 }
 
-                Text(
-                    text = "بُني التطبيق بمعمارية قابلة للتوسع لإضافة كتب السنة النبوية تدريجياً بنفس أسلوب الرحلة، التسميع المباشر، والألعاب التفاعلية:",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = StorybookColors.StoryMuted
-                )
-
-                books.forEach { book ->
+                books.filter { it.isAvailable }.forEach { book ->
                     ToyCard(
                         containerColor = book.bgTint,
-                        borderColor = if (book.isAvailable) book.accentColor else book.accentColor.copy(alpha = 0.4f),
-                        lipColor = if (book.isAvailable) book.accentDark else book.accentColor.copy(alpha = 0.35f),
+                        borderColor = book.accentColor,
+                        lipColor = book.accentDark,
                         cornerRadius = 22.dp,
                         lipHeight = 5.dp,
                         contentPadding = PaddingValues(14.dp)
@@ -117,7 +111,7 @@ fun SunnahLibraryDialog(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = if (book.isAvailable) Icons.AutoMirrored.Rounded.MenuBook else Icons.Rounded.Schedule,
+                                    imageVector = Icons.AutoMirrored.Rounded.MenuBook,
                                     contentDescription = null,
                                     tint = Color.White,
                                     modifier = Modifier.size(26.dp)
@@ -196,6 +190,37 @@ fun SunnahLibraryDialog(
                                 )
                             }
                         }
+                    }
+                }
+
+                ToyCard(
+                    containerColor = StorybookColors.GoldSoft,
+                    borderColor = StorybookColors.GoldMain.copy(alpha = 0.7f),
+                    lipColor = StorybookColors.GoldDeep.copy(alpha = 0.45f),
+                    cornerRadius = 22.dp,
+                    lipHeight = 4.dp,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 18.dp),
+                    modifier = Modifier.testTag("more_books_coming_soon_card")
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.AutoAwesome,
+                            contentDescription = null,
+                            tint = StorybookColors.GoldDeep,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(Modifier.size(8.dp))
+                        Text(
+                            text = "المزيد قريباً إن شاء الله",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black,
+                            color = StorybookColors.StoryNavy,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }

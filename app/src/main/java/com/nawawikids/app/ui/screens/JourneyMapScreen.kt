@@ -42,6 +42,7 @@ import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.DonutLarge
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Extension
@@ -110,6 +111,7 @@ fun JourneyMapScreen(
     onSelectFilter: (MapFilter) -> Unit,
     onOpenStation: (Int) -> Unit,
     onOpenProfile: () -> Unit,
+    onOpenDashboard: () -> Unit,
     onOpenCertificate: () -> Unit,
     onOpenLibrary: () -> Unit
 ) {
@@ -147,6 +149,7 @@ fun JourneyMapScreen(
                 overallPct = overallPct,
                 topInset = statusPadding,
                 onOpenProfile = onOpenProfile,
+                onOpenDashboard = onOpenDashboard,
                 onOpenLibrary = onOpenLibrary,
                 onOpenCertificate = onOpenCertificate
             )
@@ -175,6 +178,79 @@ fun JourneyMapScreen(
                         onOpenProfile = onOpenProfile,
                         onOpenCertificate = onOpenCertificate
                     )
+                }
+
+                // 2b. Compact Progress Dashboard & Daily Reminders Entry Strip
+                item(key = "dashboard_quick_banner") {
+                    val memorizedCount = progress.recitedIds.size
+                    val memFrac = (memorizedCount.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+                    val memPct = (memFrac * 100f).roundToInt()
+                    Surface(
+                        shape = RoundedCornerShape(22.dp),
+                        color = Color.White,
+                        border = BorderStroke(2.dp, StorybookColors.VioletBorder),
+                        shadowElevation = 2.dp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(22.dp))
+                            .clickable(onClick = onOpenDashboard)
+                            .testTag("open_dashboard_banner")
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            AnimatedCircularProgressRing(
+                                progress = memFrac,
+                                size = 54.dp,
+                                strokeWidth = 6.dp,
+                                trackColor = StorybookColors.VioletSoft,
+                                activeColors = listOf(StorybookColors.VioletMain, StorybookColors.TealMain)
+                            ) {
+                                Text(
+                                    text = "${ArabicUtils.toArabicDigits(memPct)}٪",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Black,
+                                    color = StorybookColors.VioletDark
+                                )
+                            }
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text(
+                                    text = "لوحة التقدّم والتذكيرات اليومية",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Black,
+                                    color = StorybookColors.StoryNavy
+                                )
+                                Text(
+                                    text = "حفظت ${ArabicUtils.toArabicDigits(memorizedCount)} من ${ArabicUtils.toArabicDigits(total)} حديثاً • اضغط لمشاهدة دائرة كل حديث وضبط التذكير",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = StorybookColors.StoryMuted,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(StorybookColors.VioletSoft),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                    contentDescription = "فتح لوحة التقدّم",
+                                    tint = StorybookColors.VioletDark,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // 3. 4-World Horizontal Illustrated Explorer Deck
@@ -308,6 +384,7 @@ private fun ModernHeroTopBar(
     overallPct: Int,
     topInset: androidx.compose.ui.unit.Dp,
     onOpenProfile: () -> Unit,
+    onOpenDashboard: () -> Unit,
     onOpenLibrary: () -> Unit,
     onOpenCertificate: () -> Unit
 ) {
@@ -407,11 +484,15 @@ private fun ModernHeroTopBar(
                         }
                     }
 
-                    // Stars Pill
+                    // Stars Pill (taps open Progress Dashboard)
                     Surface(
                         shape = RoundedCornerShape(14.dp),
                         color = StorybookColors.GoldSoft,
-                        border = BorderStroke(1.5.dp, StorybookColors.GoldMain)
+                        border = BorderStroke(1.5.dp, StorybookColors.GoldMain),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable(onClick = onOpenDashboard)
+                            .testTag("stars_open_dashboard_pill")
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
@@ -420,7 +501,7 @@ private fun ModernHeroTopBar(
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.Star,
-                                contentDescription = "النجوم",
+                                contentDescription = "النجوم ولوحة التقدّم",
                                 tint = StorybookColors.GoldMain,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -431,6 +512,25 @@ private fun ModernHeroTopBar(
                                 color = StorybookColors.GoldDeep
                             )
                         }
+                    }
+
+                    // Progress Dashboard Icon Button
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(13.dp))
+                            .background(StorybookColors.VioletSoft)
+                            .border(1.5.dp, StorybookColors.VioletMain, RoundedCornerShape(13.dp))
+                            .clickable(onClick = onOpenDashboard)
+                            .testTag("open_dashboard_button"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.DonutLarge,
+                            contentDescription = "لوحة التقدّم والحفظ",
+                            tint = StorybookColors.VioletDark,
+                            modifier = Modifier.size(19.dp)
+                        )
                     }
 
                     // Library Icon Button

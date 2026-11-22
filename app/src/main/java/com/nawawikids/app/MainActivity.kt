@@ -1,5 +1,6 @@
 package com.nawawikids.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -18,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,9 +42,11 @@ import com.nawawikids.app.ui.components.AssetImage
 import com.nawawikids.app.ui.components.CandyButton
 import com.nawawikids.app.ui.components.StorybookBackground
 import com.nawawikids.app.ui.components.ToyCard
+import com.nawawikids.app.notifications.DailyReminderScheduler
 import com.nawawikids.app.ui.screens.CertificateDialog
 import com.nawawikids.app.ui.screens.JourneyMapScreen
 import com.nawawikids.app.ui.screens.OnboardingScreen
+import com.nawawikids.app.ui.screens.ProgressDashboardScreen
 import com.nawawikids.app.ui.screens.StationScreen
 import com.nawawikids.app.ui.screens.StudentProfileDialog
 import com.nawawikids.app.ui.screens.SunnahLibraryDialog
@@ -56,24 +60,49 @@ import kotlinx.serialization.Serializable
 data object JourneyRoute
 
 @Serializable
+data object DashboardRoute
+
+@Serializable
 data class StationRoute(val hadithId: Int)
 
 class MainActivity : ComponentActivity() {
+    private val pendingReminderHadithId = mutableStateOf<Int?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        extractReminderTarget(intent)
         setContent {
             NawawiKidsTheme {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    NawawiKidsApp()
+                    NawawiKidsApp(
+                        pendingHadithId = pendingReminderHadithId.value,
+                        onConsumePendingHadith = { pendingReminderHadithId.value = null }
+                    )
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        extractReminderTarget(intent)
+    }
+
+    private fun extractReminderTarget(intent: Intent?) {
+        val targetId = intent?.getIntExtra(DailyReminderScheduler.EXTRA_OPEN_HADITH_ID, -1) ?: -1
+        if (targetId in 1..42) {
+            pendingReminderHadithId.value = targetId
         }
     }
 }
 
 @Composable
-private fun NawawiKidsApp(viewModel: JourneyViewModel = viewModel()) {
+private fun NawawiKidsApp(
+    pendingHadithId: Int? = null,
+    onConsumePendingHadith: () -> Unit = {},
+    viewModel: JourneyViewModel = viewModel()
+) {
     val datasetState by viewModel.datasetState.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val progressLoaded by viewModel.progressLoaded.collectAsStateWithLifecycle()
@@ -178,6 +207,19 @@ private fun NawawiKidsApp(viewModel: JourneyViewModel = viewModel()) {
                 val navController = rememberNavController()
                 val dataset = ds.dataset
 
+                LaunchedEffect(pendingHadithId) {
+                    if (pendingHadithId != null) {
+                        val safeId = pendingHadithId.coerceIn(1, dataset.hadiths.size.coerceAtLeast(1))
+                        if (progress.isUnlocked(safeId)) {
+                            viewModel.openStation(safeId)
+                            navController.navigate(StationRoute(safeId)) {
+                                launchSingleTop = true
+                            }
+                        }
+                        onConsumePendingHadith()
+                    }
+                }
+
                 NavHost(
                     navController = navController,
                     startDestination = JourneyRoute
@@ -195,8 +237,22 @@ private fun NawawiKidsApp(viewModel: JourneyViewModel = viewModel()) {
                             navController.navigate(StationRoute(id))
                         },
                         onOpenProfile = { showProfile = true },
+                        onOpenDashboard = { navController.navigate(DashboardRoute) },
                         onOpenCertificate = { showCertificate = true },
                         onOpenLibrary = { showLibrary = true }
+                    )
+                }
+
+                composable<DashboardRoute> {
+                    ProgressDashboardScreen(
+                        dataset = dataset,
+                        progress = progress,
+                        onBack = { navController.popBackStack() },
+                        onOpenStation = { id ->
+                            viewModel.openStation(id)
+                            navController.navigate(StationRoute(id))
+                        },
+                        onUpdateDailyReminder = viewModel::updateDailyReminder
                     )
                 }
 

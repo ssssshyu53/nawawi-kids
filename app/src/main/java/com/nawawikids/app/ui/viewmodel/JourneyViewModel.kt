@@ -20,6 +20,7 @@ import com.nawawikids.app.model.QuizMode
 import com.nawawikids.app.model.StationTab
 import com.nawawikids.app.model.SunnahBook
 import com.nawawikids.app.model.UserProgress
+import com.nawawikids.app.notifications.DailyReminderScheduler
 import com.nawawikids.app.speech.LiveRecitationController
 import com.nawawikids.app.speech.LiveRecitationState
 import com.nawawikids.app.util.ArabicUtils
@@ -86,6 +87,7 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
 
     private var hadithsById: Map<Int, Hadith> = emptyMap()
     private var initialWorldSynced = false
+    private var lastSyncedReminderKey: Triple<Boolean, Int, Int>? = null
 
     init {
         liveRecitationController = LiveRecitationController(
@@ -108,6 +110,16 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
                 _progress.value = prog
                 _progressLoaded.value = true
                 sfxPlayer.muted = prog.sfxMuted
+                val reminderKey = Triple(prog.dailyReminderEnabled, prog.reminderHour, prog.reminderMinute)
+                if (lastSyncedReminderKey != reminderKey) {
+                    lastSyncedReminderKey = reminderKey
+                    DailyReminderScheduler.syncSchedule(
+                        context = getApplication(),
+                        enabled = prog.dailyReminderEnabled,
+                        hour = prog.reminderHour,
+                        minute = prog.reminderMinute
+                    )
+                }
                 if (!initialWorldSynced && hadithsById.isNotEmpty()) {
                     syncSelectedWorldToFrontier(prog)
                 }
@@ -269,6 +281,15 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
     fun setFontSize(option: FontSizeOption) {
         sfxPlayer.play(SfxKind.POP)
         viewModelScope.launch { repository.setFontSize(option) }
+    }
+
+    fun updateDailyReminder(enabled: Boolean, hour: Int, minute: Int) {
+        sfxPlayer.play(SfxKind.POP)
+        lastSyncedReminderKey = Triple(enabled, hour, minute)
+        DailyReminderScheduler.syncSchedule(getApplication(), enabled, hour, minute)
+        viewModelScope.launch {
+            repository.setDailyReminder(enabled, hour, minute)
+        }
     }
 
     fun resetAllProgress() {

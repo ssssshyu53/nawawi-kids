@@ -55,45 +55,6 @@ class SunnahRepository(private val context: Context) {
             accentColor = Color(0xFF14B8A6),
             accentDark = Color(0xFF0F766E),
             bgTint = Color(0xFFF0FDFA)
-        ),
-        SunnahBook(
-            id = "riyad_salihin",
-            title = "مختارات رياض الصالحين",
-            author = "الإمام النووي",
-            subtitle = "أحاديث الآداب والرقائق والأذكار اليومية المبسطة للناشئة",
-            hadithCount = 60,
-            assetDataPath = null,
-            isAvailable = false,
-            badgeLabel = "قريباً في التوسعة",
-            accentColor = Color(0xFFF59E0B),
-            accentDark = Color(0xFFB45309),
-            bgTint = Color(0xFFFFFBEB)
-        ),
-        SunnahBook(
-            id = "adab_mufrad",
-            title = "الأدب المفرد للأطفال",
-            author = "الإمام البخاري",
-            subtitle = "بر الوالدين وصلة الرحم وآداب التعامل والصحبة الصالحة",
-            hadithCount = 50,
-            assetDataPath = null,
-            isAvailable = false,
-            badgeLabel = "قريباً في التوسعة",
-            accentColor = Color(0xFFF43F5E),
-            accentDark = Color(0xFFBE123C),
-            bgTint = Color(0xFFFFF1F2)
-        ),
-        SunnahBook(
-            id = "umdat_ahkam",
-            title = "عمدة الأحكام الميسر",
-            author = "الحافظ عبد الغني المقدسي",
-            subtitle = "أحاديث الطهارة والصلاة والعبادات بأسلوب قصصي مشوّق",
-            hadithCount = 40,
-            assetDataPath = null,
-            isAvailable = false,
-            badgeLabel = "قريباً في التوسعة",
-            accentColor = Color(0xFF0EA5E9),
-            accentDark = Color(0xFF0369A1),
-            bgTint = Color(0xFFF0F9FF)
         )
     )
 
@@ -129,6 +90,9 @@ class SunnahRepository(private val context: Context) {
         val LAST_ACTIVE_DATE = stringPreferencesKey("last_active_date")
         val TOTAL_XP = intPreferencesKey("total_xp")
         val HAS_SEEN_ONBOARDING = booleanPreferencesKey("has_seen_onboarding")
+        val DAILY_REMINDER_ENABLED = booleanPreferencesKey("daily_reminder_enabled")
+        val REMINDER_HOUR = intPreferencesKey("reminder_hour")
+        val REMINDER_MINUTE = intPreferencesKey("reminder_minute")
     }
 
     val progressFlow: Flow<UserProgress> = context.nawawiDataStore.data.map { prefs ->
@@ -160,7 +124,10 @@ class SunnahRepository(private val context: Context) {
             streakDays = (prefs[Keys.STREAK_DAYS] ?: 1).coerceAtLeast(1),
             lastActiveDate = prefs[Keys.LAST_ACTIVE_DATE] ?: "",
             totalXp = (prefs[Keys.TOTAL_XP] ?: 0).coerceAtLeast(0),
-            hasSeenOnboarding = prefs[Keys.HAS_SEEN_ONBOARDING] ?: false
+            hasSeenOnboarding = prefs[Keys.HAS_SEEN_ONBOARDING] ?: false,
+            dailyReminderEnabled = prefs[Keys.DAILY_REMINDER_ENABLED] ?: true,
+            reminderHour = (prefs[Keys.REMINDER_HOUR] ?: 16).coerceIn(0, 23),
+            reminderMinute = (prefs[Keys.REMINDER_MINUTE] ?: 0).coerceIn(0, 59)
         )
     }
 
@@ -244,6 +211,14 @@ class SunnahRepository(private val context: Context) {
 
     suspend fun setFontSize(option: FontSizeOption) {
         context.nawawiDataStore.edit { it[Keys.FONT_SIZE] = option.key }
+    }
+
+    suspend fun setDailyReminder(enabled: Boolean, hour: Int, minute: Int) {
+        context.nawawiDataStore.edit { prefs ->
+            prefs[Keys.DAILY_REMINDER_ENABLED] = enabled
+            prefs[Keys.REMINDER_HOUR] = hour.coerceIn(0, 23)
+            prefs[Keys.REMINDER_MINUTE] = minute.coerceIn(0, 59)
+        }
     }
 
     suspend fun markStepVisited(hadithId: Int, listened: Boolean = false, learned: Boolean = false) {
@@ -368,6 +343,9 @@ class SunnahRepository(private val context: Context) {
             val keepSfx = prefs[Keys.SFX_MUTED] ?: false
             val keepFont = prefs[Keys.FONT_SIZE] ?: FontSizeOption.MEDIUM.key
             val keepOnboarding = prefs[Keys.HAS_SEEN_ONBOARDING] ?: true
+            val keepReminderEnabled = prefs[Keys.DAILY_REMINDER_ENABLED] ?: true
+            val keepReminderHour = prefs[Keys.REMINDER_HOUR] ?: 16
+            val keepReminderMinute = prefs[Keys.REMINDER_MINUTE] ?: 0
             prefs.clear()
             prefs[Keys.STUDENT_NAME] = keepName
             if (keepAge != null && keepAge in 1..120) {
@@ -377,6 +355,9 @@ class SunnahRepository(private val context: Context) {
             prefs[Keys.SFX_MUTED] = keepSfx
             prefs[Keys.FONT_SIZE] = keepFont
             prefs[Keys.HAS_SEEN_ONBOARDING] = keepOnboarding
+            prefs[Keys.DAILY_REMINDER_ENABLED] = keepReminderEnabled
+            prefs[Keys.REMINDER_HOUR] = keepReminderHour
+            prefs[Keys.REMINDER_MINUTE] = keepReminderMinute
             prefs[Keys.UNLOCKED_UP_TO] = 1
             prefs[Keys.CURRENT_ID] = 1
             prefs[Keys.STREAK_DAYS] = 1

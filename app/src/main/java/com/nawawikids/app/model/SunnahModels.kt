@@ -180,6 +180,16 @@ data class HadithProgressRecord(
         get() = (if (listened && learned) 1 else 0) +
             (if (memorized) 1 else 0) +
             (if (quizCompleted) 1 else 0)
+
+    val progressFraction: Float
+        get() {
+            var score = 0f
+            if (listened) score += 0.20f
+            if (learned) score += 0.20f
+            if (memorized) score += 0.40f
+            if (quizCompleted) score += 0.20f
+            return score.coerceIn(0f, 1f)
+        }
 }
 
 data class HeroRank(
@@ -205,7 +215,10 @@ data class UserProgress(
     val streakDays: Int = 1,
     val lastActiveDate: String = "",
     val totalXp: Int = 0,
-    val hasSeenOnboarding: Boolean = false
+    val hasSeenOnboarding: Boolean = false,
+    val dailyReminderEnabled: Boolean = true,
+    val reminderHour: Int = 16,
+    val reminderMinute: Int = 0
 ) {
     val heroDisplayName: String
         get() {
