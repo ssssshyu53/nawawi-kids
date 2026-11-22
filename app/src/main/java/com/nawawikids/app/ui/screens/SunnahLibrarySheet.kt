@@ -78,8 +78,8 @@ fun SunnahLibraryDialog(
                     RibbonBadge(
                         text = "مكتبة السنة النبوية للأطفال",
                         topColor = StorybookColors.TealMain,
-                        bottomColor = StorybookColors.TealDark,
-                        borderColor = Color(0xFF115E59)
+                        bottomColor = StorybookColors.TealButtonBottom,
+                        borderColor = StorybookColors.TealButtonBorder
                     )
                     IconButton(
                         onClick = onDismiss,
@@ -91,9 +91,9 @@ fun SunnahLibraryDialog(
 
                 books.filter { it.isAvailable }.forEach { book ->
                     ToyCard(
-                        containerColor = book.bgTint,
+                        containerColor = if (StorybookColors.isDarkMode) StorybookColors.TealSoft else book.bgTint,
                         borderColor = book.accentColor,
-                        lipColor = book.accentDark,
+                        lipColor = StorybookColors.TealButtonBorder,
                         cornerRadius = 22.dp,
                         lipHeight = 5.dp,
                         contentPadding = PaddingValues(14.dp)
@@ -153,7 +153,7 @@ fun SunnahLibraryDialog(
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = if (book.isAvailable) StorybookColors.EmeraldSoft else Color.White,
+                                color = if (book.isAvailable) StorybookColors.EmeraldSoft else StorybookColors.SurfaceWhite,
                                 border = BorderStroke(
                                     1.5.dp,
                                     if (book.isAvailable) StorybookColors.EmeraldMain else book.accentColor.copy(alpha = 0.5f)

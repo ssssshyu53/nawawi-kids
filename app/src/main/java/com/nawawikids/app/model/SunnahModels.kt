@@ -1,6 +1,7 @@
 package com.nawawikids.app.model
 
 import androidx.compose.ui.graphics.Color
+import com.nawawikids.app.ui.theme.StorybookColors
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -218,7 +219,8 @@ data class UserProgress(
     val hasSeenOnboarding: Boolean = false,
     val dailyReminderEnabled: Boolean = true,
     val reminderHour: Int = 16,
-    val reminderMinute: Int = 0
+    val reminderMinute: Int = 0,
+    val darkMode: Boolean = false
 ) {
     val heroDisplayName: String
         get() {
@@ -260,7 +262,7 @@ data class UserProgress(
 }
 
 object StorybookChapters {
-    val chapters: List<ChapterVisual> = listOf(
+    private val lightChapters: List<ChapterVisual> = listOf(
         ChapterVisual(
             id = 1,
             ord = "العالم ١",
@@ -322,6 +324,44 @@ object StorybookChapters {
             border = Color(0xFFBAE6FD)
         )
     )
+
+    private val darkChapters: List<ChapterVisual> = listOf(
+        lightChapters[0].copy(
+            main = Color(0xFF1F9D90),
+            dark = Color(0xFF166F66),
+            light = Color(0xFF24494D),
+            ink = Color(0xFF8BE0D7),
+            bg = Color(0xFF1A262B),
+            border = Color(0xFF2B4B50)
+        ),
+        lightChapters[1].copy(
+            main = Color(0xFFD94F6B),
+            dark = Color(0xFF9F2F47),
+            light = Color(0xFF4A2531),
+            ink = Color(0xFFF5A7B7),
+            bg = Color(0xFF271D24),
+            border = Color(0xFF54313D)
+        ),
+        lightChapters[2].copy(
+            main = Color(0xFFD99A2E),
+            dark = Color(0xFF996B1B),
+            light = Color(0xFF473920),
+            ink = Color(0xFFF4CF7E),
+            bg = Color(0xFF26221B),
+            border = Color(0xFF4F422B)
+        ),
+        lightChapters[3].copy(
+            main = Color(0xFF2F94CC),
+            dark = Color(0xFF1D6691),
+            light = Color(0xFF233B50),
+            ink = Color(0xFF8CCCF0),
+            bg = Color(0xFF1A2431),
+            border = Color(0xFF2C455E)
+        )
+    )
+
+    val chapters: List<ChapterVisual>
+        get() = if (StorybookColors.isDarkMode) darkChapters else lightChapters
 
     fun byId(stageId: Int): ChapterVisual =
         chapters.firstOrNull { it.id == stageId } ?: chapters.first()

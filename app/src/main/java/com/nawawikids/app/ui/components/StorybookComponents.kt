@@ -67,32 +67,41 @@ fun StorybookBackground(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
+    val isDark = StorybookColors.isDarkMode
+    val bgTop = StorybookColors.BgTop
+    val bgMidTop = StorybookColors.BgMidTop
+    val creamBg = StorybookColors.CreamBg
+    val creamWarm = StorybookColors.CreamWarm
+    val goldStar = StorybookColors.GoldMain
+    val tealDot = StorybookColors.TealMain
+    val coralDot = StorybookColors.CoralMain
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.0f to Color(0xFFDFF3FF),
-                        0.20f to Color(0xFFF2FAFF),
-                        0.55f to StorybookColors.CreamBg,
-                        1.0f to StorybookColors.CreamWarm
+                        0.0f to bgTop,
+                        0.20f to bgMidTop,
+                        0.55f to creamBg,
+                        1.0f to creamWarm
                     )
                 )
             )
             .drawBehind {
                 val step = 110.dp.toPx()
-                val starColor = StorybookColors.GoldMain.copy(alpha = 0.09f)
-                val dotTeal = StorybookColors.TealMain.copy(alpha = 0.09f)
-                val dotCoral = StorybookColors.CoralMain.copy(alpha = 0.08f)
+                val starColor = goldStar.copy(alpha = if (isDark) 0.16f else 0.09f)
+                val dotTeal = tealDot.copy(alpha = if (isDark) 0.14f else 0.09f)
+                val dotCoral = coralDot.copy(alpha = if (isDark) 0.10f else 0.08f)
                 var y = step * 0.4f
                 var row = 0
                 while (y < size.height) {
                     var x = if (row % 2 == 0) step * 0.3f else step * 0.75f
                     while (x < size.width) {
-                        drawCircle(color = starColor, radius = 4.dp.toPx(), center = Offset(x, y))
-                        drawCircle(color = dotTeal, radius = 2.5.dp.toPx(), center = Offset(x + 36.dp.toPx(), y + 28.dp.toPx()))
-                        drawCircle(color = dotCoral, radius = 2.2.dp.toPx(), center = Offset(x - 28.dp.toPx(), y + 40.dp.toPx()))
+                        drawCircle(color = starColor, radius = if (isDark) 2.8.dp.toPx() else 4.dp.toPx(), center = Offset(x, y))
+                        drawCircle(color = dotTeal, radius = 2.2.dp.toPx(), center = Offset(x + 36.dp.toPx(), y + 28.dp.toPx()))
+                        drawCircle(color = dotCoral, radius = 2.dp.toPx(), center = Offset(x - 28.dp.toPx(), y + 40.dp.toPx()))
                         x += step
                     }
                     y += step
@@ -148,9 +157,10 @@ fun CloudMatnCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val outerShape = RoundedCornerShape(28.dp)
+    val dashColor = StorybookColors.GoldMain.copy(alpha = if (StorybookColors.isDarkMode) 0.28f else 0.35f)
     Box(
         modifier = modifier
-            .background(color = Color(0xFFE2B857), shape = outerShape)
+            .background(color = StorybookColors.MatnLip, shape = outerShape)
             .padding(bottom = 7.dp)
     ) {
         Box(
@@ -158,14 +168,14 @@ fun CloudMatnCard(
                 .clip(outerShape)
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.White, Color(0xFFFFFDF6))
+                        listOf(StorybookColors.MatnTop, StorybookColors.MatnBottom)
                     )
                 )
-                .border(3.dp, Color(0xFFEAB308), outerShape)
+                .border(3.dp, StorybookColors.MatnBorder, outerShape)
                 .drawBehind {
                     val inset = 8.dp.toPx()
                     drawRoundRect(
-                        color = StorybookColors.GoldMain.copy(alpha = 0.35f),
+                        color = dashColor,
                         topLeft = Offset(inset, inset),
                         size = Size(size.width - inset * 2, size.height - inset * 2),
                         cornerRadius = CornerRadius(20.dp.toPx(), 20.dp.toPx()),
@@ -191,9 +201,9 @@ fun CandyButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     topColor: Color = StorybookColors.TealMain,
-    bottomColor: Color = StorybookColors.TealDark,
-    borderColor: Color = StorybookColors.TealDark,
-    lipColor: Color = StorybookColors.TealDark,
+    bottomColor: Color = StorybookColors.TealButtonBottom,
+    borderColor: Color = StorybookColors.TealButtonBorder,
+    lipColor: Color = StorybookColors.TealButtonBorder,
     contentColor: Color = Color.White,
     cornerRadius: Dp = 18.dp,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 11.dp),
@@ -242,7 +252,7 @@ fun RibbonBadge(
     modifier: Modifier = Modifier,
     topColor: Color = Color(0xFFFB7185),
     bottomColor: Color = Color(0xFFE11D48),
-    borderColor: Color = StorybookColors.CoralDeep,
+    borderColor: Color = Color(0xFF881337),
     textColor: Color = Color.White
 ) {
     val shape = RoundedCornerShape(16.dp)

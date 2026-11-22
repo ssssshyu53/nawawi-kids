@@ -93,6 +93,7 @@ class SunnahRepository(private val context: Context) {
         val DAILY_REMINDER_ENABLED = booleanPreferencesKey("daily_reminder_enabled")
         val REMINDER_HOUR = intPreferencesKey("reminder_hour")
         val REMINDER_MINUTE = intPreferencesKey("reminder_minute")
+        val DARK_MODE = booleanPreferencesKey("dark_mode")
     }
 
     val progressFlow: Flow<UserProgress> = context.nawawiDataStore.data.map { prefs ->
@@ -127,7 +128,8 @@ class SunnahRepository(private val context: Context) {
             hasSeenOnboarding = prefs[Keys.HAS_SEEN_ONBOARDING] ?: false,
             dailyReminderEnabled = prefs[Keys.DAILY_REMINDER_ENABLED] ?: true,
             reminderHour = (prefs[Keys.REMINDER_HOUR] ?: 16).coerceIn(0, 23),
-            reminderMinute = (prefs[Keys.REMINDER_MINUTE] ?: 0).coerceIn(0, 59)
+            reminderMinute = (prefs[Keys.REMINDER_MINUTE] ?: 0).coerceIn(0, 59),
+            darkMode = prefs[Keys.DARK_MODE] ?: false
         )
     }
 
@@ -219,6 +221,10 @@ class SunnahRepository(private val context: Context) {
             prefs[Keys.REMINDER_HOUR] = hour.coerceIn(0, 23)
             prefs[Keys.REMINDER_MINUTE] = minute.coerceIn(0, 59)
         }
+    }
+
+    suspend fun setDarkMode(enabled: Boolean) {
+        context.nawawiDataStore.edit { it[Keys.DARK_MODE] = enabled }
     }
 
     suspend fun markStepVisited(hadithId: Int, listened: Boolean = false, learned: Boolean = false) {
@@ -346,6 +352,7 @@ class SunnahRepository(private val context: Context) {
             val keepReminderEnabled = prefs[Keys.DAILY_REMINDER_ENABLED] ?: true
             val keepReminderHour = prefs[Keys.REMINDER_HOUR] ?: 16
             val keepReminderMinute = prefs[Keys.REMINDER_MINUTE] ?: 0
+            val keepDarkMode = prefs[Keys.DARK_MODE] ?: false
             prefs.clear()
             prefs[Keys.STUDENT_NAME] = keepName
             if (keepAge != null && keepAge in 1..120) {
@@ -358,6 +365,7 @@ class SunnahRepository(private val context: Context) {
             prefs[Keys.DAILY_REMINDER_ENABLED] = keepReminderEnabled
             prefs[Keys.REMINDER_HOUR] = keepReminderHour
             prefs[Keys.REMINDER_MINUTE] = keepReminderMinute
+            prefs[Keys.DARK_MODE] = keepDarkMode
             prefs[Keys.UNLOCKED_UP_TO] = 1
             prefs[Keys.CURRENT_ID] = 1
             prefs[Keys.STREAK_DAYS] = 1

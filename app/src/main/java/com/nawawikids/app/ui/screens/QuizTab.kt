@@ -611,7 +611,7 @@ private fun WordOrderPuzzleGame(
     var solvedNow by remember(hadith.id, shuffleSeed) { mutableStateOf(false) }
 
     ToyCard(
-        containerColor = Color(0xFFF0FDFA),
+        containerColor = StorybookColors.TealSoft,
         borderColor = StorybookColors.TealBorder,
         lipColor = StorybookColors.TealMain
     ) {
@@ -635,10 +635,10 @@ private fun WordOrderPuzzleGame(
             }
             CandyButton(
                 onClick = { shuffleSeed++ },
-                topColor = Color.White,
+                topColor = StorybookColors.SurfaceWhite,
                 bottomColor = StorybookColors.GoldSoft,
                 borderColor = StorybookColors.GoldMain,
-                lipColor = StorybookColors.GoldDark,
+                lipColor = StorybookColors.GoldLip,
                 contentColor = StorybookColors.GoldDeep,
                 cornerRadius = 13.dp,
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 7.dp)
@@ -652,7 +652,7 @@ private fun WordOrderPuzzleGame(
         // Built sentence tray
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = Color.White,
+            color = StorybookColors.SurfaceWhite,
             border = BorderStroke(2.5.dp, if (solvedNow) StorybookColors.EmeraldMain else StorybookColors.TealMain),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -840,7 +840,7 @@ private fun VocabMatchGame(
     }
 
     ToyCard(
-        containerColor = Color(0xFFFAF5FF),
+        containerColor = StorybookColors.VioletSoft,
         borderColor = StorybookColors.VioletBorder,
         lipColor = StorybookColors.VioletMain
     ) {
@@ -864,7 +864,7 @@ private fun VocabMatchGame(
             }
             CandyButton(
                 onClick = { gameSeed++ },
-                topColor = Color.White,
+                topColor = StorybookColors.SurfaceWhite,
                 bottomColor = StorybookColors.GoldSoft,
                 borderColor = StorybookColors.GoldMain,
                 lipColor = StorybookColors.GoldDark,
@@ -902,7 +902,7 @@ private fun VocabMatchGame(
                     val bg = when {
                         isMatched -> StorybookColors.EmeraldSoft
                         isSelected -> StorybookColors.VioletMain
-                        else -> Color.White
+                        else -> StorybookColors.SurfaceWhite
                     }
                     val border = when {
                         isMatched -> StorybookColors.EmeraldMain

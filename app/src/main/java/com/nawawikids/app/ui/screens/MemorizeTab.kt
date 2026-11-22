@@ -332,7 +332,7 @@ private fun LiveVoiceRecitationSection(
 
     // 1. Live Voice Studio Control Card
     ToyCard(
-        containerColor = Color(0xFFFAF5FF),
+        containerColor = StorybookColors.VioletSoft,
         borderColor = StorybookColors.VioletBorder,
         lipColor = StorybookColors.VioletMain
     ) {
@@ -407,7 +407,7 @@ private fun LiveVoiceRecitationSection(
                     .weight(1f)
                     .height(12.dp)
                     .clip(CircleShape)
-                    .background(Color.White)
+                    .background(StorybookColors.SurfaceWhite)
                     .border(1.5.dp, StorybookColors.VioletBorder, CircleShape)
                     .padding(2.dp)
             ) {
@@ -506,7 +506,7 @@ private fun LiveVoiceRecitationSection(
 
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = Color.White,
+                color = StorybookColors.SurfaceWhite,
                 border = BorderStroke(1.5.dp, StorybookColors.VioletBorder),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -563,7 +563,7 @@ private fun LiveVoiceRecitationSection(
                 onClick = { onPlayWordOrPhraseHint(recitationState.currentTargetIndex, 4) },
                 enabled = !isCompleted,
                 modifier = Modifier.testTag("listen_phrase_helper_button"),
-                topColor = Color.White,
+                topColor = StorybookColors.SurfaceWhite,
                 bottomColor = StorybookColors.TealSoft,
                 borderColor = StorybookColors.TealMain,
                 lipColor = StorybookColors.TealDark,
@@ -579,7 +579,7 @@ private fun LiveVoiceRecitationSection(
                 onClick = onHintCurrentWord,
                 enabled = !isCompleted,
                 modifier = Modifier.testTag("hint_current_word_button"),
-                topColor = Color.White,
+                topColor = StorybookColors.SurfaceWhite,
                 bottomColor = StorybookColors.GoldSoft,
                 borderColor = StorybookColors.GoldMain,
                 lipColor = StorybookColors.GoldDark,
@@ -594,8 +594,8 @@ private fun LiveVoiceRecitationSection(
             CandyButton(
                 onClick = { onSetPauseOnMistake(!recitationState.pauseOnMistake) },
                 modifier = Modifier.testTag("toggle_pause_on_mistake_button"),
-                topColor = if (recitationState.pauseOnMistake) StorybookColors.VioletSoft else Color.White,
-                bottomColor = if (recitationState.pauseOnMistake) Color(0xFFEDE9FE) else StorybookColors.EmeraldSoft,
+                topColor = if (recitationState.pauseOnMistake) StorybookColors.VioletSoft else StorybookColors.SurfaceWhite,
+                bottomColor = if (recitationState.pauseOnMistake) StorybookColors.VioletSoft else StorybookColors.EmeraldSoft,
                 borderColor = if (recitationState.pauseOnMistake) StorybookColors.VioletMain else StorybookColors.EmeraldMain,
                 lipColor = if (recitationState.pauseOnMistake) StorybookColors.VioletDark else StorybookColors.EmeraldDark,
                 contentColor = if (recitationState.pauseOnMistake) StorybookColors.VioletDeep else StorybookColors.EmeraldDark,
@@ -613,7 +613,7 @@ private fun LiveVoiceRecitationSection(
             CandyButton(
                 onClick = onResetRecitation,
                 modifier = Modifier.testTag("reset_recitation_button"),
-                topColor = Color.White,
+                topColor = StorybookColors.SurfaceWhite,
                 bottomColor = StorybookColors.SkySoft,
                 borderColor = StorybookColors.SkyAccent,
                 lipColor = StorybookColors.SkyDark,
@@ -708,22 +708,22 @@ private fun LiveVoiceRecitationSection(
                 CandyButton(
                     onClick = { onPlayWordOrPhraseHint(targetIdx, 1) },
                     modifier = Modifier.testTag("hear_missed_word_button"),
-                    topColor = StorybookColors.GoldLight,
-                    bottomColor = StorybookColors.GoldMain,
-                    borderColor = StorybookColors.GoldDark,
-                    lipColor = StorybookColors.GoldDeep,
-                    contentColor = StorybookColors.GoldDeep,
+                    topColor = if (StorybookColors.isDarkMode) Color(0xFFE6B44C) else StorybookColors.GoldLight,
+                    bottomColor = if (StorybookColors.isDarkMode) Color(0xFFC98C22) else StorybookColors.GoldMain,
+                    borderColor = if (StorybookColors.isDarkMode) Color(0xFFB37A1A) else StorybookColors.GoldDark,
+                    lipColor = if (StorybookColors.isDarkMode) Color(0xFF6B470D) else StorybookColors.GoldDeep,
+                    contentColor = StorybookColors.GoldButtonInk,
                     cornerRadius = 14.dp,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    Icon(Icons.AutoMirrored.Rounded.VolumeUp, contentDescription = null, tint = StorybookColors.GoldDeep, modifier = Modifier.size(16.dp))
-                    Text("اسمع الكلمة", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black, color = StorybookColors.GoldDeep)
+                    Icon(Icons.AutoMirrored.Rounded.VolumeUp, contentDescription = null, tint = StorybookColors.GoldButtonInk, modifier = Modifier.size(16.dp))
+                    Text("اسمع الكلمة", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black, color = StorybookColors.GoldButtonInk)
                 }
 
                 CandyButton(
                     onClick = onHintCurrentWord,
                     modifier = Modifier.testTag("mistake_hint_letter_button"),
-                    topColor = Color.White,
+                    topColor = StorybookColors.SurfaceWhite,
                     bottomColor = StorybookColors.SkySoft,
                     borderColor = StorybookColors.SkyAccent,
                     lipColor = StorybookColors.SkyDark,
@@ -738,7 +738,7 @@ private fun LiveVoiceRecitationSection(
                 CandyButton(
                     onClick = onSkipCurrentWord,
                     modifier = Modifier.testTag("skip_reveal_word_button"),
-                    topColor = Color.White,
+                    topColor = StorybookColors.SurfaceWhite,
                     bottomColor = StorybookColors.VioletSoft,
                     borderColor = StorybookColors.VioletBorder,
                     lipColor = StorybookColors.VioletDark,
@@ -808,7 +808,7 @@ private fun LiveVoiceRecitationSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(2.dp)
-                .background(Color(0xFFFDE68A))
+                .background(StorybookColors.GoldBorder)
         )
         Spacer(Modifier.height(14.dp))
 
@@ -956,10 +956,10 @@ private fun ProgressiveMaskingSection(
                             modifier = Modifier
                                 .weight(1f)
                                 .testTag("mem_level_$pct"),
-                            topColor = if (active) Color(0xFFA78BFA) else StorybookColors.VioletSoft,
-                            bottomColor = if (active) StorybookColors.VioletMain else Color(0xFFEDE9FE),
+                            topColor = if (active) Color(0xFF9F88E8) else StorybookColors.SurfaceWhite,
+                            bottomColor = if (active) StorybookColors.VioletMain else StorybookColors.VioletSoft,
                             borderColor = if (active) StorybookColors.VioletDark else StorybookColors.VioletBorder,
-                            lipColor = if (active) StorybookColors.VioletDeep else StorybookColors.VioletMain,
+                            lipColor = if (active) StorybookColors.VioletDark else StorybookColors.VioletBorder,
                             contentColor = if (active) Color.White else StorybookColors.VioletDeep,
                             cornerRadius = 15.dp,
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 9.dp)
@@ -1008,9 +1008,9 @@ private fun ProgressiveMaskingSection(
 
             CandyButton(
                 onClick = onRevealNextWord,
-                topColor = StorybookColors.SkySoft,
-                bottomColor = Color(0xFFBAE6FD),
-                borderColor = Color(0xFF7DD3FC),
+                topColor = StorybookColors.SurfaceWhite,
+                bottomColor = StorybookColors.SkySoft,
+                borderColor = StorybookColors.SkyAccent,
                 lipColor = StorybookColors.SkyDark,
                 contentColor = StorybookColors.SkyDark,
                 cornerRadius = 14.dp,
@@ -1021,9 +1021,9 @@ private fun ProgressiveMaskingSection(
 
             CandyButton(
                 onClick = onReshuffleHidden,
-                topColor = StorybookColors.GoldSoft,
-                bottomColor = Color(0xFFFDE68A),
-                borderColor = Color(0xFFFCD34D),
+                topColor = StorybookColors.SurfaceWhite,
+                bottomColor = StorybookColors.GoldSoft,
+                borderColor = StorybookColors.GoldBorder,
                 lipColor = StorybookColors.GoldDark,
                 contentColor = StorybookColors.GoldDeep,
                 cornerRadius = 14.dp,
@@ -1035,16 +1035,16 @@ private fun ProgressiveMaskingSection(
 
             CandyButton(
                 onClick = onRevealAllWords,
-                topColor = StorybookColors.GoldLight,
-                bottomColor = Color(0xFFFACC15),
-                borderColor = Color(0xFFEAB308),
-                lipColor = Color(0xFFA16207),
-                contentColor = StorybookColors.GoldDeep,
+                topColor = if (StorybookColors.isDarkMode) Color(0xFFE6B44C) else StorybookColors.GoldLight,
+                bottomColor = if (StorybookColors.isDarkMode) Color(0xFFC98C22) else Color(0xFFFACC15),
+                borderColor = if (StorybookColors.isDarkMode) Color(0xFFB37A1A) else Color(0xFFEAB308),
+                lipColor = if (StorybookColors.isDarkMode) Color(0xFF6B470D) else Color(0xFFA16207),
+                contentColor = StorybookColors.GoldButtonInk,
                 cornerRadius = 14.dp,
                 contentPadding = PaddingValues(horizontal = 11.dp, vertical = 8.dp)
             ) {
-                Icon(Icons.Rounded.Visibility, contentDescription = null, tint = StorybookColors.GoldDeep, modifier = Modifier.size(16.dp))
-                Text("اكشف الكل", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black, color = StorybookColors.GoldDeep)
+                Icon(Icons.Rounded.Visibility, contentDescription = null, tint = StorybookColors.GoldButtonInk, modifier = Modifier.size(16.dp))
+                Text("اكشف الكل", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black, color = StorybookColors.GoldButtonInk)
             }
         }
     }
@@ -1106,11 +1106,16 @@ private fun ProgressiveMaskingSection(
                                 val hintTxt = if (stationState.firstLetterHint) ArabicUtils.firstLetterHint(word.t) else "....."
                                 Box(
                                     modifier = Modifier
-                                        .background(StorybookColors.GoldDark, RoundedCornerShape(12.dp))
+                                        .background(StorybookColors.GoldBorder, RoundedCornerShape(12.dp))
                                         .padding(bottom = 3.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Brush.verticalGradient(listOf(StorybookColors.GoldSoft, Color(0xFFFDE68A))))
-                                        .border(2.dp, StorybookColors.GoldDark, RoundedCornerShape(12.dp))
+                                        .background(
+                                            Brush.verticalGradient(
+                                                if (StorybookColors.isDarkMode) listOf(StorybookColors.GoldSoft, Color(0xFF332919))
+                                                else listOf(StorybookColors.GoldSoft, Color(0xFFFDE68A))
+                                            )
+                                        )
+                                        .border(1.5.dp, StorybookColors.GoldMain, RoundedCornerShape(12.dp))
                                         .clickable { onTogglePeekWord(idx) }
                                         .padding(horizontal = 12.dp, vertical = 4.dp)
                                 ) {
@@ -1131,7 +1136,7 @@ private fun ProgressiveMaskingSection(
 
     // 3. Self-Recitation Recording & Qari Comparison Studio
     ToyCard(
-        containerColor = Color(0xFFFFF5F7),
+        containerColor = StorybookColors.CoralSoft,
         borderColor = StorybookColors.CoralBorder,
         lipColor = StorybookColors.CoralMain
     ) {
@@ -1145,7 +1150,7 @@ private fun ProgressiveMaskingSection(
                 modifier = Modifier
                     .size(46.dp)
                     .clip(CircleShape)
-                    .background(Color.White)
+                    .background(StorybookColors.SurfaceWhite)
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -1227,10 +1232,10 @@ private fun ProgressiveMaskingSection(
                             CandyButton(
                                 onClick = onToggleSelfPlayback,
                                 modifier = Modifier.weight(1f),
-                                topColor = Color.White,
+                                topColor = StorybookColors.SurfaceWhite,
                                 bottomColor = StorybookColors.GoldSoft,
                                 borderColor = StorybookColors.GoldMain,
-                                lipColor = StorybookColors.GoldDark,
+                                lipColor = StorybookColors.GoldLip,
                                 contentColor = StorybookColors.GoldDeep,
                                 cornerRadius = 14.dp,
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
@@ -1252,9 +1257,9 @@ private fun ProgressiveMaskingSection(
                                 onClick = onPlayQariCompare,
                                 modifier = Modifier.weight(1f),
                                 topColor = StorybookColors.TealMain,
-                                bottomColor = StorybookColors.TealDark,
-                                borderColor = StorybookColors.TealDark,
-                                lipColor = Color(0xFF115E59),
+                                bottomColor = StorybookColors.TealButtonBottom,
+                                borderColor = StorybookColors.TealButtonBorder,
+                                lipColor = StorybookColors.TealButtonBorder,
                                 cornerRadius = 14.dp,
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
                             ) {

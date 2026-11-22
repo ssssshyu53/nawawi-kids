@@ -152,7 +152,7 @@ fun TrueFalseChallengeGame(
     val allAnswered = items.isNotEmpty() && answers.size == items.size
 
     ToyCard(
-        containerColor = Color(0xFFFFFBEB),
+        containerColor = StorybookColors.GoldSoft,
         borderColor = StorybookColors.GoldBorder,
         lipColor = StorybookColors.GoldMain
     ) {
@@ -176,10 +176,10 @@ fun TrueFalseChallengeGame(
             }
             CandyButton(
                 onClick = { seed++ },
-                topColor = Color.White,
+                topColor = StorybookColors.SurfaceWhite,
                 bottomColor = StorybookColors.GoldSoft,
                 borderColor = StorybookColors.GoldMain,
-                lipColor = StorybookColors.GoldDark,
+                lipColor = StorybookColors.GoldLip,
                 contentColor = StorybookColors.GoldDeep,
                 cornerRadius = 13.dp,
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 7.dp)
@@ -198,7 +198,7 @@ fun TrueFalseChallengeGame(
 
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = Color.White,
+                    color = StorybookColors.SurfaceWhite,
                     border = BorderStroke(
                         2.dp,
                         when {
@@ -449,7 +449,7 @@ fun FillInBlankGame(
     val wrongPicks = remember(hadith.id, seed) { mutableStateMapOf<Int, String>() }
 
     ToyCard(
-        containerColor = Color(0xFFF0F9FF),
+        containerColor = StorybookColors.SkySoft,
         borderColor = StorybookColors.SkyLight,
         lipColor = StorybookColors.SkyAccent
     ) {
@@ -473,10 +473,10 @@ fun FillInBlankGame(
             }
             CandyButton(
                 onClick = { seed++ },
-                topColor = Color.White,
+                topColor = StorybookColors.SurfaceWhite,
                 bottomColor = StorybookColors.GoldSoft,
                 borderColor = StorybookColors.GoldMain,
-                lipColor = StorybookColors.GoldDark,
+                lipColor = StorybookColors.GoldLip,
                 contentColor = StorybookColors.GoldDeep,
                 cornerRadius = 13.dp,
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 7.dp)
@@ -494,7 +494,7 @@ fun FillInBlankGame(
 
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = Color.White,
+                    color = StorybookColors.SurfaceWhite,
                     border = BorderStroke(2.dp, if (isSolved) StorybookColors.EmeraldMain else StorybookColors.SkyLight),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -516,7 +516,7 @@ fun FillInBlankGame(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(Color(0xFFFFFDF7))
+                                .background(StorybookColors.CreamBg)
                                 .border(1.dp, StorybookColors.GoldBorder, RoundedCornerShape(14.dp))
                                 .padding(12.dp)
                         ) {

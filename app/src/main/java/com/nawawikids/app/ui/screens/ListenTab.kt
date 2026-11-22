@@ -179,7 +179,7 @@ fun ListenTab(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.5.dp)
-                    .background(Color(0xFFFDE68A))
+                    .background(StorybookColors.GoldBorder)
             )
             Spacer(Modifier.height(12.dp))
 
@@ -195,18 +195,18 @@ fun ListenTab(
                             val isActive = idx == audioState.activeWordIndex
                             val isSpoken = audioState.activeWordIndex > -1 && idx < audioState.activeWordIndex
                             val bg = when {
-                                isActive -> Color(0xFFFDE047)
+                                isActive -> StorybookColors.ActiveWordBg
                                 isSpoken -> StorybookColors.TealSoft
                                 else -> Color.Transparent
                             }
                             val border = when {
-                                isActive -> Color(0xFFD97706)
+                                isActive -> StorybookColors.GoldMain
                                 else -> Color.Transparent
                             }
                             val textCol = when {
-                                isActive -> Color(0xFF451A03)
+                                isActive -> StorybookColors.ActiveWordInk
                                 isSpoken -> StorybookColors.TealDark
-                                else -> Color(0xFF23180F)
+                                else -> StorybookColors.StoryInk
                             }
                             Box(
                                 modifier = Modifier
@@ -236,10 +236,10 @@ fun ListenTab(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("goto_learn_button"),
-                topColor = Color(0xFFFDE047),
-                bottomColor = StorybookColors.GoldMain,
-                borderColor = Color(0xFFD97706),
-                lipColor = StorybookColors.GoldDark,
+                topColor = if (StorybookColors.isDarkMode) Color(0xFFE6B44C) else Color(0xFFFDE047),
+                bottomColor = if (StorybookColors.isDarkMode) Color(0xFFC98C22) else StorybookColors.GoldMain,
+                borderColor = if (StorybookColors.isDarkMode) Color(0xFFE0A83B) else Color(0xFFD97706),
+                lipColor = Color(0xFF8C5A0B),
                 contentColor = Color(0xFF5C2C06)
             ) {
                 Text(
@@ -362,7 +362,7 @@ private fun AuthorCommentaryListenCard(
 
     Surface(
         shape = RoundedCornerShape(24.dp),
-        color = Color(0xFFF5F3FF),
+        color = StorybookColors.VioletSoft,
         border = BorderStroke(2.dp, StorybookColors.VioletBorder),
         shadowElevation = 2.dp,
         modifier = Modifier
@@ -384,7 +384,7 @@ private fun AuthorCommentaryListenCard(
                     modifier = Modifier
                         .size(38.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(StorybookColors.VioletSoft)
+                        .background(StorybookColors.SurfaceWhite)
                         .border(1.5.dp, StorybookColors.VioletBorder, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -407,14 +407,14 @@ private fun AuthorCommentaryListenCard(
                     )
                     Surface(
                         shape = CircleShape,
-                        color = Color.White,
+                        color = StorybookColors.SurfaceWhite,
                         border = BorderStroke(1.dp, StorybookColors.VioletBorder)
                     ) {
                         Text(
                             text = "للفائدة فقط • غير مطلوب للحفظ أو التسميع",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.ExtraBold,
-                            color = StorybookColors.VioletMain,
+                            color = StorybookColors.VioletDark,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                         )
                     }
@@ -439,15 +439,15 @@ private fun AuthorCommentaryListenCard(
                                 audioState.currentSec <= word.e + 0.12
                             val isSpoken = audioState.currentSec > word.e + 0.12
                             val bg = when {
-                                isActive -> Color(0xFFDDD6FE)
-                                isSpoken -> StorybookColors.VioletSoft.copy(alpha = 0.65f)
+                                isActive -> if (StorybookColors.isDarkMode) StorybookColors.VioletMain.copy(alpha = 0.45f) else Color(0xFFDDD6FE)
+                                isSpoken -> StorybookColors.VioletBorder.copy(alpha = 0.25f)
                                 else -> Color.Transparent
                             }
                             val border = if (isActive) StorybookColors.VioletMain else Color.Transparent
                             val textCol = when {
-                                isActive -> StorybookColors.VioletDark
-                                isSpoken -> Color(0xFF4C1D95)
-                                else -> StorybookColors.StoryNavy
+                                isActive -> StorybookColors.VioletDeep
+                                isSpoken -> StorybookColors.VioletDark
+                                else -> StorybookColors.StoryInk
                             }
                             Box(
                                 modifier = Modifier
@@ -538,7 +538,7 @@ fun StickyHadithAudioBar(
     ) {
         Surface(
             shape = RoundedCornerShape(22.dp),
-            color = Color(0xFFFFFEFB),
+            color = StorybookColors.SurfaceWhite,
             shadowElevation = if (audioState.isPlaying || expanded) 10.dp else 6.dp,
             border = BorderStroke(1.5.dp, borderColor),
             modifier = Modifier
@@ -551,7 +551,7 @@ fun StickyHadithAudioBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(3.5.dp)
-                        .background(Color(0xFFF2E9D8))
+                        .background(StorybookColors.SubtleSurface)
                 ) {
                     Box(
                         modifier = Modifier
@@ -580,7 +580,7 @@ fun StickyHadithAudioBar(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color(0xFFFFFBF2))
+                            .background(StorybookColors.CreamBg)
                             .padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
@@ -929,7 +929,7 @@ private fun DrawerActionPill(
 ) {
     Surface(
         shape = RoundedCornerShape(13.dp),
-        color = if (active) StorybookColors.GoldSoft else Color.White,
+        color = if (active) StorybookColors.GoldSoft else StorybookColors.SurfaceWhite,
         border = BorderStroke(
             width = 1.dp,
             color = if (active) StorybookColors.GoldMain else StorybookColors.GoldBorder

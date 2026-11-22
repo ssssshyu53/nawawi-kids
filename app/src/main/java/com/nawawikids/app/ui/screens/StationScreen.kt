@@ -35,8 +35,10 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.Mic
@@ -132,7 +134,8 @@ fun StationScreen(
     onVocabMatchSolved: () -> Unit,
     onGameCorrectSfx: () -> Unit,
     onGameWrongSfx: () -> Unit,
-    onOpenCertificate: () -> Unit
+    onOpenCertificate: () -> Unit,
+    onToggleDarkMode: () -> Unit
 ) {
     var showPosterModal by remember { mutableStateOf(false) }
     var audioDrawerExpanded by remember { mutableStateOf(false) }
@@ -156,7 +159,7 @@ fun StationScreen(
         ) {
             // Top Navigation Bar (extends seamlessly behind status bar)
             Surface(
-                color = Color.White.copy(alpha = 0.96f),
+                color = StorybookColors.TopBarSurface,
                 shadowElevation = 3.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -173,7 +176,7 @@ fun StationScreen(
                         modifier = Modifier.testTag("back_to_map_button"),
                         topColor = Color(0xFF38BDF8),
                         bottomColor = Color(0xFF0284C7),
-                        borderColor = StorybookColors.SkyDark,
+                        borderColor = Color(0xFF0369A1),
                         lipColor = Color(0xFF075985),
                         cornerRadius = 15.dp,
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp)
@@ -181,7 +184,7 @@ fun StationScreen(
                         Icon(
                             imageVector = Icons.Rounded.Map,
                             contentDescription = "خريطة الرحلة",
-                            tint = StorybookColors.GoldLight,
+                            tint = Color(0xFFFEF08A),
                             modifier = Modifier.size(18.dp)
                         )
                         Text("الخريطة", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black, color = Color.White)
@@ -197,22 +200,46 @@ fun StationScreen(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Black,
                             color = chapter.ink,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                         )
                     }
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(13.dp))
+                                .background(if (progress.darkMode) StorybookColors.GoldSoft else StorybookColors.SkySoft)
+                                .border(
+                                    1.5.dp,
+                                    if (progress.darkMode) StorybookColors.GoldMain else StorybookColors.SkyAccent,
+                                    RoundedCornerShape(13.dp)
+                                )
+                                .clickable(onClick = onToggleDarkMode)
+                                .testTag("station_dark_mode_button"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (progress.darkMode) Icons.Rounded.LightMode else Icons.Rounded.DarkMode,
+                                contentDescription = if (progress.darkMode) "التبديل للوضع النهاري" else "التبديل للوضع الليلي للقراءة",
+                                tint = if (progress.darkMode) StorybookColors.GoldMain else StorybookColors.StoryNavy,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                         CandyButton(
                             onClick = { onNavigateHadith(hadith.id - 1) },
                             enabled = canPrev,
                             modifier = Modifier.testTag("prev_hadith_button"),
                             topColor = StorybookColors.GoldSoft,
-                            bottomColor = Color(0xFFFDE68A),
-                            borderColor = StorybookColors.GoldMain,
-                            lipColor = StorybookColors.GoldDark,
+                            bottomColor = if (progress.darkMode) StorybookColors.GoldSoft else Color(0xFFFDE68A),
+                            borderColor = StorybookColors.GoldBorder,
+                            lipColor = StorybookColors.GoldLip,
                             contentColor = StorybookColors.GoldDeep,
                             cornerRadius = 14.dp,
-                            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 7.dp)
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
@@ -226,12 +253,12 @@ fun StationScreen(
                             enabled = canNext,
                             modifier = Modifier.testTag("next_hadith_button"),
                             topColor = StorybookColors.TealSoft,
-                            bottomColor = Color(0xFF99F6E4),
+                            bottomColor = if (progress.darkMode) StorybookColors.TealBorder else Color(0xFF99F6E4),
                             borderColor = StorybookColors.TealMain,
-                            lipColor = StorybookColors.TealDark,
+                            lipColor = StorybookColors.TealButtonBorder,
                             contentColor = StorybookColors.TealDark,
                             cornerRadius = 14.dp,
-                            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 7.dp)
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
@@ -523,8 +550,8 @@ private fun CompactStationBanner(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(RoundedCornerShape(14.dp))
-                        .background(StorybookColors.GoldLight)
-                        .border(2.dp, StorybookColors.GoldMain, RoundedCornerShape(14.dp))
+                        .background(StorybookColors.GoldSoft)
+                        .border(1.5.dp, StorybookColors.GoldMain, RoundedCornerShape(14.dp))
                         .clickable(onClick = onOpenPoster)
                         .testTag("open_poster_button"),
                     contentAlignment = Alignment.Center
@@ -532,7 +559,7 @@ private fun CompactStationBanner(
                     Icon(
                         imageVector = Icons.Rounded.Image,
                         contentDescription = "اللوحة المصورة",
-                        tint = StorybookColors.GoldDeep,
+                        tint = StorybookColors.GoldDark,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -552,8 +579,8 @@ private fun CompactStationBanner(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(Brush.horizontalGradient(listOf(Color(0xFFFFFBEB), Color(0xFFF0F9FF))))
-                .border(1.5.dp, Color(0xFFBAE6FD), RoundedCornerShape(16.dp))
+                .background(Brush.horizontalGradient(listOf(StorybookColors.GoldSoft, StorybookColors.SkySoft)))
+                .border(1.5.dp, StorybookColors.SkyLight, RoundedCornerShape(16.dp))
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(9.dp)
@@ -564,7 +591,7 @@ private fun CompactStationBanner(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(Color.White)
+                    .background(StorybookColors.SurfaceWhite)
             )
             Text(
                 text = tipMsg,
@@ -585,7 +612,7 @@ private fun StationBottomStepDock(
     onSelectTab: (StationTab) -> Unit
 ) {
     Surface(
-        color = Color.White,
+        color = StorybookColors.TopBarSurface,
         shadowElevation = 10.dp,
         border = BorderStroke(1.dp, StorybookColors.GoldBorder),
         modifier = Modifier.fillMaxWidth()

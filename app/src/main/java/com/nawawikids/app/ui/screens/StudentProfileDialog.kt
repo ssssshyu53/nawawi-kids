@@ -27,8 +27,10 @@ import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Extension
+import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.RestartAlt
@@ -80,6 +82,7 @@ fun StudentProfileDialog(
     progress: UserProgress,
     totalHadiths: Int,
     onSaveProfile: (String, Int?, AvatarChoice) -> Unit,
+    onToggleDarkMode: (Boolean) -> Unit,
     onToggleTeacherMode: (Boolean) -> Unit,
     onToggleSfx: () -> Unit,
     onResetProgress: () -> Unit,
@@ -120,8 +123,8 @@ fun StudentProfileDialog(
                     RibbonBadge(
                         text = "ملف البطل وتقدّمك المحفوظ",
                         topColor = StorybookColors.TealMain,
-                        bottomColor = StorybookColors.TealDark,
-                        borderColor = Color(0xFF115E59)
+                        bottomColor = StorybookColors.TealButtonBottom,
+                        borderColor = StorybookColors.TealButtonBorder
                     )
                     IconButton(
                         onClick = onDismiss,
@@ -138,7 +141,7 @@ fun StudentProfileDialog(
                         .clip(RoundedCornerShape(22.dp))
                         .background(
                             Brush.horizontalGradient(
-                                listOf(StorybookColors.StoryNavy, Color(0xFF0F766E))
+                                listOf(Color(0xFF1E3A5F), Color(0xFF0F766E))
                             )
                         )
                         .padding(14.dp)
@@ -181,7 +184,7 @@ fun StudentProfileDialog(
                                     text = "${ArabicUtils.toArabicDigits(progress.totalXp)} نقطة",
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Black,
-                                    color = StorybookColors.StoryInk,
+                                    color = StorybookColors.GoldButtonInk,
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                 )
                             }
@@ -264,7 +267,7 @@ fun StudentProfileDialog(
                         val selected = avatarInput == choice
                         Surface(
                             shape = RoundedCornerShape(20.dp),
-                            color = if (selected) StorybookColors.TealSoft else Color.White,
+                            color = if (selected) StorybookColors.TealSoft else StorybookColors.SurfaceWhite,
                             border = BorderStroke(
                                 width = if (selected) 3.dp else 1.5.dp,
                                 color = if (selected) StorybookColors.TealMain else StorybookColors.GoldBorder
@@ -285,7 +288,7 @@ fun StudentProfileDialog(
                                     modifier = Modifier
                                         .size(46.dp)
                                         .clip(CircleShape)
-                                        .background(Color.White)
+                                        .background(StorybookColors.CreamBg)
                                 )
                                 Text(
                                     text = choice.displayName,
@@ -321,8 +324,10 @@ fun StudentProfileDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = StorybookColors.TealMain,
                         unfocusedBorderColor = StorybookColors.GoldBorder,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White
+                        focusedContainerColor = StorybookColors.SurfaceWhite,
+                        unfocusedContainerColor = StorybookColors.SurfaceWhite,
+                        focusedTextColor = StorybookColors.StoryInk,
+                        unfocusedTextColor = StorybookColors.StoryInk
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -341,8 +346,10 @@ fun StudentProfileDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = StorybookColors.TealMain,
                         unfocusedBorderColor = StorybookColors.GoldBorder,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White
+                        focusedContainerColor = StorybookColors.SurfaceWhite,
+                        unfocusedContainerColor = StorybookColors.SurfaceWhite,
+                        focusedTextColor = StorybookColors.StoryInk,
+                        unfocusedTextColor = StorybookColors.StoryInk
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -368,17 +375,55 @@ fun StudentProfileDialog(
                     Text("حفظ بيانات البطل", fontWeight = FontWeight.Black, color = Color.White)
                 }
 
-                // Settings Section: SFX + Teacher Mode + Reset
+                // Settings Section: Night Study Mode + SFX + Free Browse + Reset
                 Surface(
                     shape = RoundedCornerShape(18.dp),
-                    color = Color.White,
+                    color = StorybookColors.SurfaceWhite,
                     border = BorderStroke(1.5.dp, StorybookColors.GoldBorder),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = if (progress.darkMode) Icons.Rounded.DarkMode else Icons.Rounded.LightMode,
+                                    contentDescription = null,
+                                    tint = if (progress.darkMode) StorybookColors.GoldMain else StorybookColors.GoldDark,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        text = "الوضع الليلي للقراءة",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = StorybookColors.StoryInk
+                                    )
+                                    Text(
+                                        text = "إضاءة هادئة ومريحة لعينَي البطل أثناء المذاكرة ليلاً",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = StorybookColors.StoryMuted
+                                    )
+                                }
+                            }
+                            Switch(
+                                checked = progress.darkMode,
+                                onCheckedChange = onToggleDarkMode,
+                                modifier = Modifier.testTag("profile_dark_mode_switch"),
+                                colors = SwitchDefaults.colors(checkedTrackColor = StorybookColors.VioletMain)
+                            )
+                        }
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,

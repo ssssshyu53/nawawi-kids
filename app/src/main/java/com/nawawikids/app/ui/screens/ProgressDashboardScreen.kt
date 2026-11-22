@@ -191,7 +191,7 @@ fun ProgressDashboardScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             // Top Bar
             Surface(
-                color = Color.White.copy(alpha = 0.96f),
+                color = StorybookColors.TopBarSurface,
                 shadowElevation = 4.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -359,10 +359,10 @@ fun ProgressDashboardScreen(
                                     val selected = filter == activeFilter
                                     Surface(
                                         shape = CircleShape,
-                                        color = if (selected) StorybookColors.TealMain else Color.White,
+                                        color = if (selected) StorybookColors.TealMain else StorybookColors.SurfaceWhite,
                                         border = BorderStroke(
                                             width = 1.5.dp,
-                                            color = if (selected) StorybookColors.TealDark else StorybookColors.GoldBorder
+                                            color = if (selected) StorybookColors.TealDark else StorybookColors.SubtleBorder
                                         ),
                                         modifier = Modifier
                                             .clickable { activeFilter = filter }
@@ -372,7 +372,7 @@ fun ProgressDashboardScreen(
                                             text = filter.label,
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Black,
-                                            color = if (selected) Color.White else StorybookColors.StoryNavy,
+                                            color = if (selected) Color.White else StorybookColors.StoryInk,
                                             modifier = Modifier.padding(horizontal = 13.dp, vertical = 7.dp)
                                         )
                                     }
@@ -385,8 +385,8 @@ fun ProgressDashboardScreen(
                                     val sel = selectedWorldFilter == 0
                                     Surface(
                                         shape = RoundedCornerShape(12.dp),
-                                        color = if (sel) StorybookColors.StoryNavy else Color.White,
-                                        border = BorderStroke(1.dp, if (sel) StorybookColors.StoryNavy else StorybookColors.GoldBorder),
+                                        color = if (sel) StorybookColors.TealMain else StorybookColors.SurfaceWhite,
+                                        border = BorderStroke(1.dp, if (sel) StorybookColors.TealDark else StorybookColors.SubtleBorder),
                                         modifier = Modifier
                                             .clickable { selectedWorldFilter = 0 }
                                             .testTag("dashboard_world_0")
@@ -426,7 +426,7 @@ fun ProgressDashboardScreen(
                     // 4. Clean Chapter-Grouped Hadith Circular Progress Cards
                     if (groupedByChapter.isEmpty()) {
                         item(key = "dashboard_empty_state") {
-                            ToyCard(containerColor = Color.White) {
+                            ToyCard(containerColor = StorybookColors.SurfaceWhite) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -595,15 +595,15 @@ private fun HadithProgressRowCard(
     val pct = (fraction * 100f).roundToInt()
 
     val cardBg = when {
-        isMemorized && isCompleted -> Color(0xFFF0FDF4)
-        isFrontier -> Color(0xFFFFFBEB)
-        !isUnlocked -> Color(0xFFF8FAFC)
-        else -> Color.White
+        isMemorized && isCompleted -> if (StorybookColors.isDarkMode) StorybookColors.EmeraldSoft else Color(0xFFF0FDF4)
+        isFrontier -> if (StorybookColors.isDarkMode) StorybookColors.GoldSoft else Color(0xFFFFFBEB)
+        !isUnlocked -> StorybookColors.LockedBg
+        else -> StorybookColors.SurfaceWhite
     }
     val cardBorder = when {
         isMemorized && isCompleted -> StorybookColors.EmeraldMain
         isFrontier -> StorybookColors.GoldMain
-        !isUnlocked -> Color(0xFFCBD5E1)
+        !isUnlocked -> StorybookColors.SubtleBorder
         else -> world.main.copy(alpha = 0.35f)
     }
     val ringColors = when {
@@ -613,9 +613,9 @@ private fun HadithProgressRowCard(
         else -> listOf(world.main, world.dark)
     }
     val trackColor = when {
-        !isUnlocked -> Color(0xFFE2E8F0)
-        isMemorized && isCompleted -> StorybookColors.EmeraldMain.copy(alpha = 0.18f)
-        else -> world.main.copy(alpha = 0.16f)
+        !isUnlocked -> StorybookColors.SubtleBorder
+        isMemorized && isCompleted -> StorybookColors.EmeraldMain.copy(alpha = 0.22f)
+        else -> world.main.copy(alpha = 0.20f)
     }
 
     val statusLabel = when {
@@ -630,7 +630,7 @@ private fun HadithProgressRowCard(
         isMemorized -> StorybookColors.EmeraldSoft
         isFrontier -> StorybookColors.GoldSoft
         fraction > 0f -> world.bg
-        else -> Color(0xFFF1F5F9)
+        else -> StorybookColors.SubtleSurface
     }
     val statusInk = when {
         isMemorized -> StorybookColors.EmeraldDark
@@ -782,10 +782,10 @@ private fun DashboardMiniStepBadge(
 ) {
     Surface(
         shape = RoundedCornerShape(7.dp),
-        color = if (done) softBg else Color(0xFFF1F5F9),
+        color = if (done) softBg else StorybookColors.SubtleSurface,
         border = BorderStroke(
             width = 1.dp,
-            color = if (done) accent.copy(alpha = 0.65f) else Color(0xFFE2E8F0)
+            color = if (done) accent.copy(alpha = 0.65f) else StorybookColors.SubtleBorder
         )
     ) {
         Row(
@@ -827,18 +827,23 @@ private fun OverallMemorizationHeroCard(
     val memorizedFraction = (memorizedCount.toFloat() / total.toFloat()).coerceIn(0f, 1f)
     val overallPct = (memorizedFraction * 100f).roundToInt()
 
+    val isDark = StorybookColors.isDarkMode
+    val heroGradient = if (isDark) {
+        listOf(Color(0xFF1D283A), Color(0xFF193238))
+    } else {
+        listOf(Color(0xFF1E3A5F), Color(0xFF0F766E))
+    }
+    val heroLip = if (isDark) Color(0xFF0A1019) else Color(0xFF0E2A47)
+    val heroBorder = if (isDark) StorybookColors.TealBorder else Color(0xFF5EEAD4).copy(alpha = 0.45f)
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF0E2A47), RoundedCornerShape(28.dp))
+            .background(heroLip, RoundedCornerShape(28.dp))
             .padding(bottom = 6.dp)
             .clip(RoundedCornerShape(28.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(Color(0xFF1E3A5F), Color(0xFF0F766E))
-                )
-            )
-            .border(2.dp, Color(0xFF5EEAD4).copy(alpha = 0.45f), RoundedCornerShape(28.dp))
+            .background(Brush.linearGradient(heroGradient))
+            .border(1.5.dp, heroBorder, RoundedCornerShape(28.dp))
             .padding(16.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -985,10 +990,10 @@ private fun OverallMemorizationHeroCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("dashboard_continue_next_button"),
-                topColor = Color(0xFFFDE047),
-                bottomColor = StorybookColors.GoldMain,
-                borderColor = Color(0xFFFDE047),
-                lipColor = StorybookColors.GoldDark,
+                topColor = if (StorybookColors.isDarkMode) Color(0xFFE6B44C) else Color(0xFFFDE047),
+                bottomColor = if (StorybookColors.isDarkMode) Color(0xFFC98C22) else StorybookColors.GoldMain,
+                borderColor = if (StorybookColors.isDarkMode) Color(0xFFE0A83B) else Color(0xFFFDE047),
+                lipColor = Color(0xFF8C5A0B),
                 contentColor = Color(0xFF451A03),
                 contentPadding = PaddingValues(vertical = 10.dp)
             ) {
@@ -1067,9 +1072,9 @@ private fun DailyRemindersCard(
     }
 
     ToyCard(
-        containerColor = Color(0xFFFFFDF7),
+        containerColor = StorybookColors.SurfaceWhite,
         borderColor = StorybookColors.GoldBorder,
-        lipColor = Color(0xFFFDE68A),
+        lipColor = StorybookColors.GoldLip,
         cornerRadius = 24.dp,
         contentPadding = PaddingValues(15.dp)
     ) {
@@ -1089,10 +1094,10 @@ private fun DailyRemindersCard(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(RoundedCornerShape(13.dp))
-                            .background(if (progress.dailyReminderEnabled) StorybookColors.TealSoft else Color(0xFFF1F5F9))
+                            .background(if (progress.dailyReminderEnabled) StorybookColors.TealSoft else StorybookColors.SubtleSurface)
                             .border(
                                 1.5.dp,
-                                if (progress.dailyReminderEnabled) StorybookColors.TealMain else Color(0xFFCBD5E1),
+                                if (progress.dailyReminderEnabled) StorybookColors.TealMain else StorybookColors.SubtleBorder,
                                 RoundedCornerShape(13.dp)
                             ),
                         contentAlignment = Alignment.Center
@@ -1165,10 +1170,10 @@ private fun DailyRemindersCard(
                             progress.reminderMinute == preset.minute
                         Surface(
                             shape = RoundedCornerShape(13.dp),
-                            color = if (selected) StorybookColors.TealMain else Color.White,
+                            color = if (selected) StorybookColors.TealMain else StorybookColors.SurfaceWhite,
                             border = BorderStroke(
                                 1.5.dp,
-                                if (selected) StorybookColors.TealDark else StorybookColors.GoldBorder
+                                if (selected) StorybookColors.TealDark else StorybookColors.SubtleBorder
                             ),
                             modifier = Modifier
                                 .weight(1f)
@@ -1185,7 +1190,7 @@ private fun DailyRemindersCard(
                                     text = preset.label,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Black,
-                                    color = if (selected) Color.White else StorybookColors.StoryNavy,
+                                    color = if (selected) Color.White else StorybookColors.StoryInk,
                                     maxLines = 1
                                 )
                                 Text(

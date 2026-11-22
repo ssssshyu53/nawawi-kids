@@ -283,6 +283,15 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch { repository.setFontSize(option) }
     }
 
+    fun toggleDarkMode() {
+        setDarkMode(!_progress.value.darkMode)
+    }
+
+    fun setDarkMode(enabled: Boolean) {
+        sfxPlayer.play(SfxKind.POP)
+        viewModelScope.launch { repository.setDarkMode(enabled) }
+    }
+
     fun updateDailyReminder(enabled: Boolean, hour: Int, minute: Int) {
         sfxPlayer.play(SfxKind.POP)
         lastSyncedReminderKey = Triple(enabled, hour, minute)

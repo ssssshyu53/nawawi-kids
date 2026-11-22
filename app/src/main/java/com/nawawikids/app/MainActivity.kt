@@ -99,14 +99,37 @@ class MainActivity : ComponentActivity() {
         }
         extractReminderTarget(intent)
         setContent {
-            NawawiKidsTheme {
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    NawawiKidsApp(
-                        pendingHadithId = pendingReminderHadithId.value,
-                        onConsumePendingHadith = { pendingReminderHadithId.value = null }
-                    )
-                }
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                NawawiKidsApp(
+                    pendingHadithId = pendingReminderHadithId.value,
+                    onConsumePendingHadith = { pendingReminderHadithId.value = null },
+                    onDarkModeChanged = { dark -> applySystemBarsTheme(dark) }
+                )
             }
+        }
+    }
+
+    private fun applySystemBarsTheme(darkMode: Boolean) {
+        if (darkMode) {
+            enableEdgeToEdge(
+                statusBarStyle = SystemBarStyle.dark(AndroidColor.TRANSPARENT),
+                navigationBarStyle = SystemBarStyle.dark(AndroidColor.TRANSPARENT)
+            )
+        } else {
+            enableEdgeToEdge(
+                statusBarStyle = SystemBarStyle.light(
+                    AndroidColor.TRANSPARENT,
+                    AndroidColor.TRANSPARENT
+                ),
+                navigationBarStyle = SystemBarStyle.light(
+                    AndroidColor.TRANSPARENT,
+                    AndroidColor.TRANSPARENT
+                )
+            )
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isStatusBarContrastEnforced = false
+            window.isNavigationBarContrastEnforced = false
         }
     }
 
@@ -127,6 +150,7 @@ class MainActivity : ComponentActivity() {
 private fun NawawiKidsApp(
     pendingHadithId: Int? = null,
     onConsumePendingHadith: () -> Unit = {},
+    onDarkModeChanged: (Boolean) -> Unit = {},
     viewModel: JourneyViewModel = viewModel()
 ) {
     val datasetState by viewModel.datasetState.collectAsStateWithLifecycle()
@@ -143,6 +167,11 @@ private fun NawawiKidsApp(
     var showCertificate by remember { mutableStateOf(false) }
     var showLibrary by remember { mutableStateOf(false) }
 
+    LaunchedEffect(progress.darkMode) {
+        onDarkModeChanged(progress.darkMode)
+    }
+
+    NawawiKidsTheme(darkTheme = progress.darkMode) {
     when (val ds = datasetState) {
         DatasetLoadState.Loading -> {
             StorybookBackground {
@@ -265,7 +294,8 @@ private fun NawawiKidsApp(
                         onOpenProfile = { showProfile = true },
                         onOpenDashboard = { navController.navigate(DashboardRoute) },
                         onOpenCertificate = { showCertificate = true },
-                        onOpenLibrary = { showLibrary = true }
+                        onOpenLibrary = { showLibrary = true },
+                        onToggleDarkMode = viewModel::toggleDarkMode
                     )
                 }
 
@@ -336,7 +366,8 @@ private fun NawawiKidsApp(
                         onVocabMatchSolved = viewModel::onVocabMatchSolved,
                         onGameCorrectSfx = viewModel::playGameCorrectSfx,
                         onGameWrongSfx = viewModel::playGameWrongSfx,
-                        onOpenCertificate = { showCertificate = true }
+                        onOpenCertificate = { showCertificate = true },
+                        onToggleDarkMode = viewModel::toggleDarkMode
                     )
                 }
             }
@@ -346,6 +377,7 @@ private fun NawawiKidsApp(
                     progress = progress,
                     totalHadiths = dataset.hadiths.size.coerceAtLeast(42),
                     onSaveProfile = viewModel::updateStudentProfile,
+                    onToggleDarkMode = viewModel::setDarkMode,
                     onToggleTeacherMode = viewModel::toggleTeacherMode,
                     onToggleSfx = viewModel::toggleSfxMute,
                     onResetProgress = viewModel::resetAllProgress,
@@ -371,5 +403,6 @@ private fun NawawiKidsApp(
                 }
             }
         }
+    }
     }
 }

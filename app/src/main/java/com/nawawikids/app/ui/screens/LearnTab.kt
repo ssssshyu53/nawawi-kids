@@ -88,18 +88,18 @@ fun LearnTab(
     var showSourceDetails by remember(hadith.id) { mutableStateOf(false) }
 
     val vocabPalettes = listOf(
-        Triple(Color(0xFFF0FDFA), StorybookColors.TealMain, StorybookColors.TealDark),
-        Triple(Color(0xFFFFF1F2), StorybookColors.CoralMain, StorybookColors.CoralDeep),
-        Triple(Color(0xFFF5F3FF), StorybookColors.VioletMain, StorybookColors.VioletDeep),
-        Triple(Color(0xFFF0F9FF), StorybookColors.SkyAccent, StorybookColors.SkyDark),
-        Triple(Color(0xFFFFFBEB), StorybookColors.GoldMain, StorybookColors.GoldDeep)
+        Triple(StorybookColors.TealSoft, StorybookColors.TealMain, StorybookColors.TealDark),
+        Triple(StorybookColors.CoralSoft, StorybookColors.CoralMain, StorybookColors.CoralDeep),
+        Triple(StorybookColors.VioletSoft, StorybookColors.VioletMain, StorybookColors.VioletDeep),
+        Triple(StorybookColors.SkySoft, StorybookColors.SkyAccent, StorybookColors.SkyDark),
+        Triple(StorybookColors.GoldSoft, StorybookColors.GoldMain, StorybookColors.GoldDeep)
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         // 1. Visual Story Card: Illustrated Poster + Editorial Meaning Summary
         Surface(
             shape = RoundedCornerShape(28.dp),
-            color = Color.White,
+            color = StorybookColors.SurfaceWhite,
             border = BorderStroke(2.dp, chapter.border),
             shadowElevation = 4.dp,
             modifier = Modifier.fillMaxWidth()
@@ -239,7 +239,7 @@ fun LearnTab(
         if (hadith.ghareeb.isNotEmpty()) {
             Surface(
                 shape = RoundedCornerShape(26.dp),
-                color = Color.White,
+                color = StorybookColors.SurfaceWhite,
                 border = BorderStroke(1.5.dp, StorybookColors.GoldBorder),
                 shadowElevation = 2.dp,
                 modifier = Modifier.fillMaxWidth()
@@ -413,7 +413,7 @@ fun LearnTab(
         if (hadith.lessons.isNotEmpty()) {
             Surface(
                 shape = RoundedCornerShape(26.dp),
-                color = Color.White,
+                color = StorybookColors.SurfaceWhite,
                 border = BorderStroke(1.5.dp, StorybookColors.TealBorder),
                 shadowElevation = 2.dp,
                 modifier = Modifier.fillMaxWidth()
@@ -512,7 +512,7 @@ fun LearnTab(
                                         modifier = Modifier
                                             .size(34.dp)
                                             .clip(CircleShape)
-                                            .background(if (checked) StorybookColors.EmeraldMain else Color.White)
+                                            .background(if (checked) StorybookColors.EmeraldMain else StorybookColors.SurfaceWhite)
                                             .border(
                                                 2.dp,
                                                 if (checked) StorybookColors.EmeraldDark else StorybookColors.TealMain,
@@ -610,7 +610,7 @@ fun LearnTab(
                                 modifier = Modifier
                                     .size(36.dp)
                                     .clip(RoundedCornerShape(11.dp))
-                                    .background(Color.White)
+                                    .background(StorybookColors.SurfaceWhite)
                                     .border(1.5.dp, StorybookColors.VioletBorder, RoundedCornerShape(11.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -637,7 +637,7 @@ fun LearnTab(
                         }
                         Surface(
                             shape = CircleShape,
-                            color = Color.White,
+                            color = StorybookColors.SurfaceWhite,
                             border = BorderStroke(1.dp, StorybookColors.VioletBorder)
                         ) {
                             Text(
@@ -652,7 +652,7 @@ fun LearnTab(
 
                     Surface(
                         shape = RoundedCornerShape(16.dp),
-                        color = Color.White,
+                        color = StorybookColors.SurfaceWhite,
                         border = BorderStroke(1.dp, StorybookColors.VioletBorder.copy(alpha = 0.5f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -672,7 +672,7 @@ fun LearnTab(
         // 4. Companion Reflection & Collapsible Authentic Source Badge
         Surface(
             shape = RoundedCornerShape(22.dp),
-            color = Color(0xFFFFFBEB),
+            color = StorybookColors.GoldSoft,
             border = BorderStroke(1.5.dp, StorybookColors.GoldBorder),
             modifier = Modifier
                 .fillMaxWidth()
@@ -692,7 +692,7 @@ fun LearnTab(
                         modifier = Modifier
                             .size(46.dp)
                             .clip(CircleShape)
-                            .background(Color.White)
+                            .background(StorybookColors.SurfaceWhite)
                             .border(2.dp, StorybookColors.GoldMain, CircleShape)
                     )
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -719,7 +719,7 @@ fun LearnTab(
                 AnimatedVisibility(visible = showSourceDetails && hadith.source.isNotBlank()) {
                     Surface(
                         shape = RoundedCornerShape(14.dp),
-                        color = Color.White,
+                        color = StorybookColors.SurfaceWhite,
                         border = BorderStroke(1.dp, StorybookColors.GoldBorder),
                         modifier = Modifier.fillMaxWidth()
                     ) {

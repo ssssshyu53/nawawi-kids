@@ -42,11 +42,13 @@ import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.DonutLarge
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Lock
@@ -113,7 +115,8 @@ fun JourneyMapScreen(
     onOpenProfile: () -> Unit,
     onOpenDashboard: () -> Unit,
     onOpenCertificate: () -> Unit,
-    onOpenLibrary: () -> Unit
+    onOpenLibrary: () -> Unit,
+    onToggleDarkMode: () -> Unit
 ) {
     val total = dataset.hadiths.size.coerceAtLeast(42)
     val doneCount = progress.completedIds.size
@@ -151,7 +154,8 @@ fun JourneyMapScreen(
                 onOpenProfile = onOpenProfile,
                 onOpenDashboard = onOpenDashboard,
                 onOpenLibrary = onOpenLibrary,
-                onOpenCertificate = onOpenCertificate
+                onOpenCertificate = onOpenCertificate,
+                onToggleDarkMode = onToggleDarkMode
             )
 
             LazyColumn(
@@ -187,7 +191,7 @@ fun JourneyMapScreen(
                     val memPct = (memFrac * 100f).roundToInt()
                     Surface(
                         shape = RoundedCornerShape(22.dp),
-                        color = Color.White,
+                        color = StorybookColors.SurfaceWhite,
                         border = BorderStroke(2.dp, StorybookColors.VioletBorder),
                         shadowElevation = 2.dp,
                         modifier = Modifier
@@ -207,7 +211,7 @@ fun JourneyMapScreen(
                                 progress = memFrac,
                                 size = 54.dp,
                                 strokeWidth = 6.dp,
-                                trackColor = StorybookColors.VioletSoft,
+                                trackColor = if (StorybookColors.isDarkMode) StorybookColors.SubtleBorder else StorybookColors.VioletSoft,
                                 activeColors = listOf(StorybookColors.VioletMain, StorybookColors.TealMain)
                             ) {
                                 Text(
@@ -312,7 +316,7 @@ fun JourneyMapScreen(
                 // 5. Stepping-Stone Adventure Timeline Cards
                 if (filteredHadiths.isEmpty()) {
                     item(key = "empty_filter") {
-                        ToyCard(containerColor = Color.White) {
+                        ToyCard(containerColor = StorybookColors.SurfaceWhite) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -386,10 +390,11 @@ private fun ModernHeroTopBar(
     onOpenProfile: () -> Unit,
     onOpenDashboard: () -> Unit,
     onOpenLibrary: () -> Unit,
-    onOpenCertificate: () -> Unit
+    onOpenCertificate: () -> Unit,
+    onToggleDarkMode: () -> Unit
 ) {
     Surface(
-        color = Color.White.copy(alpha = 0.96f),
+        color = StorybookColors.TopBarSurface,
         shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -452,20 +457,20 @@ private fun ModernHeroTopBar(
                     }
                 }
 
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(6.dp))
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Streak Pill
                     Surface(
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(12.dp),
                         color = StorybookColors.CoralSoft,
-                        border = BorderStroke(1.5.dp, StorybookColors.CoralBorder)
+                        border = BorderStroke(1.2.dp, StorybookColors.CoralBorder)
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 6.dp),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
@@ -473,11 +478,11 @@ private fun ModernHeroTopBar(
                                 imageVector = Icons.Rounded.LocalFireDepartment,
                                 contentDescription = "أيام متتالية",
                                 tint = StorybookColors.CoralMain,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                             Text(
                                 text = ArabicUtils.toArabicDigits(progress.streakDays),
-                                style = MaterialTheme.typography.labelMedium,
+                                style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Black,
                                 color = StorybookColors.CoralDeep
                             )
@@ -486,41 +491,64 @@ private fun ModernHeroTopBar(
 
                     // Stars Pill (taps open Progress Dashboard)
                     Surface(
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(12.dp),
                         color = StorybookColors.GoldSoft,
-                        border = BorderStroke(1.5.dp, StorybookColors.GoldMain),
+                        border = BorderStroke(1.2.dp, StorybookColors.GoldBorder),
                         modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .clickable(onClick = onOpenDashboard)
                             .testTag("stars_open_dashboard_pill")
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.Star,
                                 contentDescription = "النجوم ولوحة التقدّم",
                                 tint = StorybookColors.GoldMain,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                             Text(
                                 text = "${ArabicUtils.toArabicDigits(doneCount)}/${ArabicUtils.toArabicDigits(total)}",
-                                style = MaterialTheme.typography.labelMedium,
+                                style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Black,
                                 color = StorybookColors.GoldDeep
                             )
                         }
                     }
 
+                    // Night Study Mode Quick Toggle Button
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(11.dp))
+                            .background(if (progress.darkMode) StorybookColors.GoldSoft else StorybookColors.SkySoft)
+                            .border(
+                                1.2.dp,
+                                if (progress.darkMode) StorybookColors.GoldBorder else StorybookColors.SkyAccent,
+                                RoundedCornerShape(11.dp)
+                            )
+                            .clickable(onClick = onToggleDarkMode)
+                            .testTag("toggle_dark_mode_button"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (progress.darkMode) Icons.Rounded.LightMode else Icons.Rounded.DarkMode,
+                            contentDescription = if (progress.darkMode) "التبديل للوضع النهاري" else "التبديل للوضع الليلي للقراءة",
+                            tint = if (progress.darkMode) StorybookColors.GoldMain else StorybookColors.StoryNavy,
+                            modifier = Modifier.size(17.dp)
+                        )
+                    }
+
                     // Progress Dashboard Icon Button
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(13.dp))
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(11.dp))
                             .background(StorybookColors.VioletSoft)
-                            .border(1.5.dp, StorybookColors.VioletMain, RoundedCornerShape(13.dp))
+                            .border(1.2.dp, StorybookColors.VioletBorder, RoundedCornerShape(11.dp))
                             .clickable(onClick = onOpenDashboard)
                             .testTag("open_dashboard_button"),
                         contentAlignment = Alignment.Center
@@ -529,17 +557,17 @@ private fun ModernHeroTopBar(
                             imageVector = Icons.Rounded.DonutLarge,
                             contentDescription = "لوحة التقدّم والحفظ",
                             tint = StorybookColors.VioletDark,
-                            modifier = Modifier.size(19.dp)
+                            modifier = Modifier.size(17.dp)
                         )
                     }
 
                     // Library Icon Button
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(13.dp))
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(11.dp))
                             .background(StorybookColors.TealSoft)
-                            .border(1.5.dp, StorybookColors.TealMain, RoundedCornerShape(13.dp))
+                            .border(1.2.dp, StorybookColors.TealBorder, RoundedCornerShape(11.dp))
                             .clickable(onClick = onOpenLibrary)
                             .testTag("open_library_button"),
                         contentAlignment = Alignment.Center
@@ -548,17 +576,22 @@ private fun ModernHeroTopBar(
                             imageVector = Icons.AutoMirrored.Rounded.MenuBook,
                             contentDescription = "مكتبة السنة",
                             tint = StorybookColors.TealDark,
-                            modifier = Modifier.size(19.dp)
+                            modifier = Modifier.size(17.dp)
                         )
                     }
 
                     // Certificate Icon Button
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(13.dp))
-                            .background(Brush.verticalGradient(listOf(Color(0xFFFB7185), Color(0xFFE11D48))))
-                            .border(1.5.dp, StorybookColors.CoralDark, RoundedCornerShape(13.dp))
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(11.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    if (progress.darkMode) listOf(Color(0xFFC4425E), Color(0xFF9B2C46))
+                                    else listOf(Color(0xFFFB7185), Color(0xFFE11D48))
+                                )
+                            )
+                            .border(1.2.dp, Color(0xFF881337), RoundedCornerShape(11.dp))
                             .clickable(onClick = onOpenCertificate)
                             .testTag("header_certificate_button"),
                         contentAlignment = Alignment.Center
@@ -566,8 +599,8 @@ private fun ModernHeroTopBar(
                         Icon(
                             imageVector = Icons.Rounded.EmojiEvents,
                             contentDescription = "شهادة البطل",
-                            tint = StorybookColors.GoldLight,
-                            modifier = Modifier.size(19.dp)
+                            tint = Color(0xFFFEF08A),
+                            modifier = Modifier.size(17.dp)
                         )
                     }
                 }
@@ -609,18 +642,24 @@ private fun ContinueAdventureSpotlight(
     val record = progress.recordFor(frontierHadith.id)
     val allDone = doneCount >= total
 
+    val isDark = StorybookColors.isDarkMode
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF0F2F4C), RoundedCornerShape(28.dp))
+            .background(if (isDark) Color(0xFF10151F) else Color(0xFF0F2F4C), RoundedCornerShape(28.dp))
             .padding(bottom = 6.dp)
             .clip(RoundedCornerShape(28.dp))
             .background(
                 Brush.linearGradient(
-                    listOf(Color(0xFF1E3A5F), Color(0xFF0F766E))
+                    if (isDark) listOf(Color(0xFF1D283A), Color(0xFF193238))
+                    else listOf(Color(0xFF1E3A5F), Color(0xFF0F766E))
                 )
             )
-            .border(2.5.dp, Color(0xFF38BDF8).copy(alpha = 0.45f), RoundedCornerShape(28.dp))
+            .border(
+                2.dp,
+                if (isDark) Color(0xFF334A5E) else Color(0xFF38BDF8).copy(alpha = 0.45f),
+                RoundedCornerShape(28.dp)
+            )
             .padding(16.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -703,7 +742,7 @@ private fun ContinueAdventureSpotlight(
                                 text = frontierHadith.header,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Black,
-                                color = StorybookColors.StoryInk,
+                                color = StorybookColors.GoldButtonInk,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                             )
                         }
@@ -740,11 +779,11 @@ private fun ContinueAdventureSpotlight(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("continue_journey_button"),
-                topColor = Color(0xFFFDE047),
-                bottomColor = StorybookColors.GoldMain,
-                borderColor = Color(0xFFFDE047),
-                lipColor = StorybookColors.GoldDark,
-                contentColor = Color(0xFF451A03),
+                topColor = if (isDark) Color(0xFFE6B44C) else Color(0xFFFDE047),
+                bottomColor = if (isDark) Color(0xFFC98C22) else StorybookColors.GoldMain,
+                borderColor = if (isDark) Color(0xFFE0A83B) else Color(0xFFFDE047),
+                lipColor = Color(0xFF8C5A0B),
+                contentColor = StorybookColors.GoldButtonInk,
                 contentPadding = PaddingValues(vertical = 12.dp)
             ) {
                 Icon(
@@ -801,8 +840,8 @@ private fun WorldExplorerDeck(
                     .padding(bottom = if (isSelected) 5.dp else 3.dp)
                     .clip(RoundedCornerShape(22.dp))
                     .border(
-                        width = if (isSelected) 3.dp else 1.5.dp,
-                        color = if (isSelected) world.main else Color.White,
+                        width = if (isSelected) 2.5.dp else 1.5.dp,
+                        color = if (isSelected) world.main else StorybookColors.SubtleBorder,
                         shape = RoundedCornerShape(22.dp)
                     )
                     .clickable { onSelectWorld(world.id) }
@@ -820,9 +859,9 @@ private fun WorldExplorerDeck(
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
-                                0.0f to Color.Black.copy(alpha = 0.12f),
-                                0.45f to Color.Black.copy(alpha = 0.35f),
-                                1.0f to Color.Black.copy(alpha = 0.82f)
+                                0.0f to Color.Black.copy(alpha = 0.14f),
+                                0.45f to Color.Black.copy(alpha = 0.36f),
+                                1.0f to Color.Black.copy(alpha = 0.84f)
                             )
                         )
                 )
@@ -837,7 +876,7 @@ private fun WorldExplorerDeck(
                 ) {
                     Surface(
                         shape = CircleShape,
-                        color = if (isSelected) world.main else Color.Black.copy(alpha = 0.55f)
+                        color = if (isSelected) world.main else Color.Black.copy(alpha = 0.58f)
                     ) {
                         Text(
                             text = world.ord,
@@ -850,7 +889,7 @@ private fun WorldExplorerDeck(
 
                     Surface(
                         shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.92f)
+                        color = if (StorybookColors.isDarkMode) Color(0xFF191F2C).copy(alpha = 0.90f) else Color.White.copy(alpha = 0.92f)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
@@ -913,7 +952,7 @@ private fun SelectedWorldSummaryCard(
         ToyCard(
             containerColor = w.bg,
             borderColor = w.border,
-            lipColor = w.light,
+            lipColor = if (StorybookColors.isDarkMode) StorybookColors.LockedLip else w.light,
             cornerRadius = 24.dp,
             lipHeight = 5.dp,
             contentPadding = PaddingValues(14.dp)
@@ -929,7 +968,7 @@ private fun SelectedWorldSummaryCard(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(Color.White)
+                        .background(StorybookColors.SurfaceWhite)
                         .border(2.5.dp, w.main, CircleShape)
                 )
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -956,7 +995,7 @@ private fun SelectedWorldSummaryCard(
                     Text(
                         text = w.story,
                         style = MaterialTheme.typography.bodySmall,
-                        color = w.ink.copy(alpha = 0.88f)
+                        color = if (StorybookColors.isDarkMode) StorybookColors.StoryMuted else w.ink.copy(alpha = 0.88f)
                     )
                 }
             }
@@ -969,7 +1008,7 @@ private fun SelectedWorldSummaryCard(
                     .fillMaxWidth()
                     .height(10.dp)
                     .clip(CircleShape)
-                    .background(Color.White)
+                    .background(StorybookColors.SurfaceWhite)
                     .border(1.5.dp, w.border, CircleShape)
                     .padding(2.dp)
             ) {
@@ -990,8 +1029,8 @@ private fun SelectedWorldSummaryCard(
                     val selected = filter == activeFilter
                     Surface(
                         shape = CircleShape,
-                        color = if (selected) w.main else Color.White,
-                        border = BorderStroke(1.5.dp, if (selected) w.dark else w.border),
+                        color = if (selected) w.main else StorybookColors.SurfaceWhite,
+                        border = BorderStroke(1.5.dp, if (selected) w.main else w.border),
                         modifier = Modifier
                             .clickable { onSelectFilter(filter) }
                             .testTag("map_filter_${filter.name}")
@@ -1000,7 +1039,7 @@ private fun SelectedWorldSummaryCard(
                             text = filter.label,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Black,
-                            color = if (selected) Color.White else w.ink,
+                            color = if (selected) Color.White else StorybookColors.StoryInk,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
                     }
@@ -1086,8 +1125,11 @@ private fun AdventureMilestoneRow(
             val nodeBrush = when {
                 !isUnlocked -> Brush.verticalGradient(listOf(StorybookColors.LockedBg, StorybookColors.LockedBg))
                 isCompleted -> Brush.verticalGradient(listOf(Color(0xFFFDE047), StorybookColors.GoldMain))
-                isFrontier -> Brush.verticalGradient(listOf(world.light, world.main))
-                else -> Brush.verticalGradient(listOf(Color.White, world.bg))
+                isFrontier -> Brush.verticalGradient(
+                    if (StorybookColors.isDarkMode) listOf(world.main, world.dark)
+                    else listOf(world.light, world.main)
+                )
+                else -> Brush.verticalGradient(listOf(StorybookColors.SurfaceWhite, world.bg))
             }
 
             Box(
@@ -1099,8 +1141,8 @@ private fun AdventureMilestoneRow(
                     .clip(CircleShape)
                     .background(nodeBrush, CircleShape)
                     .border(
-                        width = if (isFrontier) 3.dp else 2.dp,
-                        color = if (isUnlocked) Color.White else Color(0xFFFBF6EB),
+                        width = if (isFrontier) 2.5.dp else 2.dp,
+                        color = if (isUnlocked) StorybookColors.SurfaceWhite else StorybookColors.LockedBg,
                         shape = CircleShape
                     )
                     .clickable(enabled = isUnlocked, onClick = onClick),
@@ -1133,19 +1175,20 @@ private fun AdventureMilestoneRow(
 
         // Expressive Station Milestone Card
         val cardBg = when {
-            !isUnlocked -> Color(0xFFFAF5EA)
-            isFrontier -> Color.White
-            isCompleted -> Color(0xFFFFFDF5)
-            else -> Color.White
+            !isUnlocked -> StorybookColors.LockedBg
+            isFrontier -> StorybookColors.SurfaceWhite
+            isCompleted -> if (StorybookColors.isDarkMode) StorybookColors.SurfaceWhite else Color(0xFFFFFDF5)
+            else -> StorybookColors.SurfaceWhite
         }
         val cardBorder = when {
-            !isUnlocked -> Color(0xFFE6DAC3)
-            isFrontier -> world.main
-            isCompleted -> StorybookColors.GoldMain
+            !isUnlocked -> StorybookColors.SubtleBorder
+            isFrontier -> if (StorybookColors.isDarkMode) world.main.copy(alpha = 0.65f) else world.main
+            isCompleted -> StorybookColors.GoldBorder
             else -> world.border
         }
         val cardLip = when {
-            !isUnlocked -> Color(0xFFDFD2B8)
+            !isUnlocked -> StorybookColors.LockedLip
+            StorybookColors.isDarkMode -> StorybookColors.LockedLip
             isFrontier -> world.dark
             isCompleted -> StorybookColors.GoldLip
             else -> world.border
@@ -1193,7 +1236,7 @@ private fun AdventureMilestoneRow(
                                 text = hadith.header,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Black,
-                                color = if (isUnlocked) world.dark else StorybookColors.LockedInk
+                                color = if (isUnlocked) world.ink else StorybookColors.LockedInk
                             )
                             if (isFrontier) {
                                 Surface(shape = CircleShape, color = world.main) {
@@ -1307,13 +1350,13 @@ private fun StepMiniDot(label: String, done: Boolean, lightMode: Boolean) {
     val bg = when {
         done && lightMode -> StorybookColors.EmeraldSoft
         done && !lightMode -> StorybookColors.EmeraldMain
-        lightMode -> Color(0xFFF3F4F6)
+        lightMode -> StorybookColors.SubtleSurface
         else -> Color.White.copy(alpha = 0.14f)
     }
     val textCol = when {
         done && lightMode -> StorybookColors.EmeraldDark
         done && !lightMode -> Color.White
-        lightMode -> Color(0xFF6B7280)
+        lightMode -> StorybookColors.StoryMuted
         else -> Color.White.copy(alpha = 0.72f)
     }
 
@@ -1351,9 +1394,9 @@ private fun TreasureRewardBanner(
 ) {
     val left = (total - recitedCount).coerceAtLeast(0)
     ToyCard(
-        containerColor = Color(0xFFFFF7D6),
-        borderColor = Color(0xFFEAB308),
-        lipColor = Color(0xFFCA8A04),
+        containerColor = if (StorybookColors.isDarkMode) StorybookColors.GoldSoft else Color(0xFFFFF7D6),
+        borderColor = StorybookColors.GoldMain,
+        lipColor = StorybookColors.GoldLip,
         contentPadding = PaddingValues(16.dp)
     ) {
         Row(
@@ -1365,14 +1408,14 @@ private fun TreasureRewardBanner(
                 modifier = Modifier
                     .size(58.dp)
                     .clip(RoundedCornerShape(18.dp))
-                    .background(Brush.verticalGradient(listOf(StorybookColors.GoldLight, StorybookColors.GoldMain)))
-                    .border(2.5.dp, StorybookColors.GoldDark, RoundedCornerShape(18.dp)),
+                    .background(Brush.verticalGradient(listOf(Color(0xFFFEF08A), StorybookColors.GoldMain)))
+                    .border(2.5.dp, Color(0xFFB45309), RoundedCornerShape(18.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (left == 0) Icons.Rounded.AutoAwesome else Icons.Rounded.EmojiEvents,
                     contentDescription = "صندوق الكنز",
-                    tint = StorybookColors.GoldDeep,
+                    tint = StorybookColors.GoldButtonInk,
                     modifier = Modifier.size(30.dp)
                 )
             }
