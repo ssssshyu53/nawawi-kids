@@ -207,9 +207,6 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
             recorderController.stopRecording()
             recorderController.stopPlayback()
         }
-        if (tab != StationTab.LISTEN) {
-            audioController.pause()
-        }
         sfxPlayer.play(SfxKind.POP)
         _station.update {
             it.copy(
@@ -227,7 +224,6 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         liveRecitationController.stopListening()
         recorderController.stopRecording()
         recorderController.stopPlayback()
-        audioController.pause()
         sfxPlayer.play(SfxKind.POP)
         _station.update { it.copy(memorizeMode = mode) }
     }
@@ -309,6 +305,29 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
 
     fun rewind5Seconds() = audioController.rewind5Seconds()
 
+    fun forward5Seconds() = audioController.forward5Seconds()
+
+    fun playParagraph(paragraphKey: Int, repeat: Boolean = false) {
+        liveRecitationController.stopListening()
+        recorderController.stopPlayback()
+        audioController.playParagraph(paragraphKey, repeat)
+    }
+
+    fun toggleRepeatCurrentParagraph() {
+        sfxPlayer.play(SfxKind.POP)
+        audioController.toggleRepeatCurrentParagraph()
+    }
+
+    fun skipToPrevParagraph() {
+        sfxPlayer.play(SfxKind.POP)
+        audioController.skipToPreviousParagraph()
+    }
+
+    fun skipToNextParagraph() {
+        sfxPlayer.play(SfxKind.POP)
+        audioController.skipToNextParagraph()
+    }
+
     fun cycleSpeed() {
         sfxPlayer.play(SfxKind.POP)
         audioController.cycleSpeed()
@@ -358,6 +377,17 @@ class JourneyViewModel(application: Application) : AndroidViewModel(application)
         audioController.pause()
         sfxPlayer.play(SfxKind.POP)
         liveRecitationController.resetRecitation()
+    }
+
+    fun jumpRecitationToWord(wordIndex: Int) {
+        audioController.pause()
+        sfxPlayer.play(SfxKind.POP)
+        liveRecitationController.jumpToWordIndex(wordIndex)
+    }
+
+    fun setRecitationPauseOnMistake(enabled: Boolean) {
+        sfxPlayer.play(SfxKind.POP)
+        liveRecitationController.setPauseOnMistake(enabled)
     }
 
     // ---- Progressive Masking & Voice Recorder ----

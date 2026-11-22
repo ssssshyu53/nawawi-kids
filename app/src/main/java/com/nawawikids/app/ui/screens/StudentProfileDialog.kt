@@ -27,12 +27,12 @@ import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Save
-import androidx.compose.material.icons.rounded.School
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -419,17 +419,24 @@ fun StudentProfileDialog(
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.School,
+                                    imageVector = Icons.Rounded.Explore,
                                     contentDescription = null,
-                                    tint = StorybookColors.GoldDark,
+                                    tint = StorybookColors.SkyDark,
                                     modifier = Modifier.size(20.dp)
                                 )
-                                Text(
-                                    text = "وضع المعلم / ولي الأمر (فتح الكل)",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = StorybookColors.StoryInk
-                                )
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        text = "وضع التصفح الحر (فتح جميع الأحاديث)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = StorybookColors.StoryInk
+                                    )
+                                    Text(
+                                        text = "للاستعراض فقط — الشهادة تتطلب إتمام تسميع كل الأحاديث",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = StorybookColors.StoryMuted
+                                    )
+                                }
                             }
                             Switch(
                                 checked = progress.teacherMode,

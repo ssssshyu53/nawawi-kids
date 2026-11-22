@@ -39,12 +39,20 @@ data class Hadith(
     @SerialName("hdr_time") val hdrTime: List<Double> = emptyList(),
     val paragraphs: List<String> = emptyList(),
     val words: List<WordTiming> = emptyList(),
+    @SerialName("author_note") val authorNote: List<WordTiming> = emptyList(),
     val ghareeb: List<GhareebWord> = emptyList(),
     val meaning: String = "",
     val lessons: List<String> = emptyList(),
     val source: String = "",
     val exercises: List<Exercise> = emptyList()
-)
+) {
+    val authorNoteText: String
+        get() = authorNote
+            .groupBy { it.p }
+            .toSortedMap()
+            .values
+            .joinToString("\n") { para -> para.joinToString(" ") { it.t } }
+}
 
 @Serializable
 data class WordTiming(
@@ -135,6 +143,8 @@ enum class MemorizeMode {
 
 enum class QuizMode {
     HERO_QUIZ,
+    TRUE_FALSE,
+    FILL_BLANK,
     WORD_PUZZLE,
     VOCAB_MATCH
 }

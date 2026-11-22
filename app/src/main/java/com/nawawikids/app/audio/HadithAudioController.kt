@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.max
+import kotlin.math.min
 
 data class AudioPlaybackState(
     val hadithId: Int = -1,
@@ -23,15 +24,18 @@ data class AudioPlaybackState(
     val currentSec: Double = 0.0,
     val durationSec: Double = 0.0,
     val activeWordIndex: Int = -1,
+    val activeParagraphIndex: Int = -1,
     val isHeaderActive: Boolean = false,
     val speed: Float = 1.0f,
     val loopMode: Int = 0, // 0 = off, 3 = 3x, 999 = infinite
-    val loopRemaining: Int = 0
+    val loopRemaining: Int = 0,
+    val repeatParagraphIndex: Int? = null // non-null when looping a specific sentence/paragraph
 )
 
 /**
  * Offline MP3 controller for assets/audio/h01..h42.mp3 with exact word-level karaoke sync,
- * tap-to-seek, speed control, loop modes, and single-word/phrase slice playback for recitation hints.
+ * 4 playback speeds (0.75x / 0.9x / 1.0x / 1.15x), ±5s skip, paragraph navigation,
+ * sentence-loop (A-B repeat), and single-word/phrase slice playback for recitation hints.
  */
 class HadithAudioController(
     private val context: Context,
@@ -41,8 +45,10 @@ class HadithAudioController(
     private var syncJob: Job? = null
     private var currentHadith: Hadith? = null
     private var sliceStopSec: Double? = null
+    private var paragraphRanges: Map<Int, Pair<Double, Double>> = emptyMap()
+    private var sortedParagraphKeys: List<Int> = emptyList()
 
-    private val speedOptions = listOf(1.0f, 0.75f, 1.15f)
+    private val speedOptions = listOf(1.0f, 0.75f, 0.9f, 1.15f)
     private var speedIdx = 0
 
     private val _state = MutableStateFlow(AudioPlaybackState())
@@ -53,6 +59,14 @@ class HadithAudioController(
         releasePlayer()
         currentHadith = hadith
         sliceStopSec = null
+
+        val grouped = hadith.words.groupBy { it.p }.toSortedMap()
+        paragraphRanges = grouped.mapValues { (_, list) ->
+            val start = max(0.0, (list.minOfOrNull { it.s } ?: 0.0) - 0.08)
+            val end = (list.maxOfOrNull { it.e } ?: hadith.duration) + 0.16
+            start to end
+        }
+        sortedParagraphKeys = grouped.keys.toList()
 
         val assetPath = hadith.audio.removePrefix("assets/")
         try {
@@ -80,7 +94,9 @@ class HadithAudioController(
                     currentSec = 0.0,
                     durationSec = dur,
                     activeWordIndex = -1,
-                    isHeaderActive = false
+                    activeParagraphIndex = -1,
+                    isHeaderActive = false,
+                    repeatParagraphIndex = null
                 )
             }
         } catch (_: Exception) {
@@ -90,7 +106,9 @@ class HadithAudioController(
                     isPlaying = false,
                     currentSec = 0.0,
                     durationSec = hadith.duration,
-                    activeWordIndex = -1
+                    activeWordIndex = -1,
+                    activeParagraphIndex = -1,
+                    repeatParagraphIndex = null
                 )
             }
         }
@@ -116,6 +134,7 @@ class HadithAudioController(
     fun playFromStart() {
         val player = mediaPlayer ?: return
         sliceStopSec = null
+        _state.update { it.copy(repeatParagraphIndex = null) }
         player.seekTo(0)
         applySpeedInternal(player, speedOptions[speedIdx])
         player.start()
@@ -141,7 +160,15 @@ class HadithAudioController(
             mediaPlayer?.seekTo(0)
         } catch (_: Exception) {
         }
-        _state.update { it.copy(currentSec = 0.0, activeWordIndex = -1, isHeaderActive = false) }
+        _state.update {
+            it.copy(
+                currentSec = 0.0,
+                activeWordIndex = -1,
+                activeParagraphIndex = -1,
+                isHeaderActive = false,
+                repeatParagraphIndex = null
+            )
+        }
     }
 
     fun seekToSeconds(sec: Double, playImmediately: Boolean = false) {
@@ -163,15 +190,74 @@ class HadithAudioController(
         seekToSeconds(next, playImmediately = _state.value.isPlaying)
     }
 
+    fun forward5Seconds() {
+        val next = min(_state.value.durationSec, _state.value.currentSec + 5.0)
+        seekToSeconds(next, playImmediately = _state.value.isPlaying)
+    }
+
+    fun playParagraph(paragraphKey: Int, repeatThisParagraph: Boolean = false) {
+        val range = paragraphRanges[paragraphKey] ?: return
+        _state.update {
+            it.copy(repeatParagraphIndex = if (repeatThisParagraph) paragraphKey else null)
+        }
+        if (repeatThisParagraph) {
+            seekToSeconds(range.first, playImmediately = true)
+        } else {
+            playSlice(range.first, range.second)
+        }
+    }
+
+    fun toggleRepeatCurrentParagraph() {
+        val cur = _state.value
+        if (cur.repeatParagraphIndex != null) {
+            _state.update { it.copy(repeatParagraphIndex = null) }
+            return
+        }
+        val targetP = cur.activeParagraphIndex.takeIf { paragraphRanges.containsKey(it) }
+            ?: sortedParagraphKeys.firstOrNull()
+            ?: return
+        val range = paragraphRanges[targetP] ?: return
+        _state.update { it.copy(repeatParagraphIndex = targetP) }
+        seekToSeconds(range.first, playImmediately = true)
+    }
+
+    fun skipToPreviousParagraph() {
+        if (sortedParagraphKeys.isEmpty()) return
+        val curP = _state.value.activeParagraphIndex
+        val idx = sortedParagraphKeys.indexOf(curP)
+        val prevKey = when {
+            idx > 0 -> sortedParagraphKeys[idx - 1]
+            else -> sortedParagraphKeys.first()
+        }
+        val start = paragraphRanges[prevKey]?.first ?: 0.0
+        _state.update { it.copy(repeatParagraphIndex = null) }
+        seekToSeconds(start, playImmediately = true)
+    }
+
+    fun skipToNextParagraph() {
+        if (sortedParagraphKeys.isEmpty()) return
+        val curP = _state.value.activeParagraphIndex
+        val idx = sortedParagraphKeys.indexOf(curP)
+        val nextKey = when {
+            idx in 0 until sortedParagraphKeys.lastIndex -> sortedParagraphKeys[idx + 1]
+            idx == -1 -> sortedParagraphKeys.first()
+            else -> sortedParagraphKeys.last()
+        }
+        val start = paragraphRanges[nextKey]?.first ?: 0.0
+        _state.update { it.copy(repeatParagraphIndex = null) }
+        seekToSeconds(start, playImmediately = true)
+    }
+
     /**
      * Plays a precise slice [startSec, endSec] of the Qari's recitation — ideal for letting
-     * the child hear a single missed word or short phrase during live recitation!
+     * the child hear a single missed word or short phrase!
      */
     fun playSlice(startSec: Double, endSec: Double) {
         val player = mediaPlayer ?: return
         val safeStart = max(0.0, startSec - 0.08)
         val safeEnd = max(safeStart + 0.45, endSec + 0.14)
         sliceStopSec = safeEnd
+        _state.update { it.copy(repeatParagraphIndex = null) }
         player.seekTo((safeStart * 1000.0).toInt())
         applySpeedInternal(player, speedOptions[speedIdx])
         player.start()
@@ -192,7 +278,13 @@ class HadithAudioController(
             3 -> 999
             else -> 0
         }
-        _state.update { it.copy(loopMode = nextMode, loopRemaining = if (nextMode == 3) 3 else 0) }
+        _state.update {
+            it.copy(
+                loopMode = nextMode,
+                loopRemaining = if (nextMode == 3) 3 else 0,
+                repeatParagraphIndex = null
+            )
+        }
     }
 
     private fun applySpeedInternal(player: MediaPlayer, speed: Float) {
@@ -213,6 +305,13 @@ class HadithAudioController(
         if (sliceStopSec != null) {
             sliceStopSec = null
             pause()
+            return
+        }
+        val repP = cur.repeatParagraphIndex
+        if (repP != null) {
+            val start = paragraphRanges[repP]?.first ?: 0.0
+            player.seekTo((start * 1000.0).toInt())
+            player.start()
             return
         }
         if (cur.loopMode == 999) {
@@ -255,6 +354,19 @@ class HadithAudioController(
                     pause()
                     break
                 }
+
+                // Sentence/paragraph loop check
+                val repP = _state.value.repeatParagraphIndex
+                if (repP != null) {
+                    val range = paragraphRanges[repP]
+                    if (range != null && t >= range.second) {
+                        player.seekTo((range.first * 1000.0).toInt())
+                        updateWordHighlightAt(range.first, isPlayingNow = true)
+                        delay(32L)
+                        continue
+                    }
+                }
+
                 updateWordHighlightAt(t, isPlayingNow = true)
                 delay(32L)
             }
@@ -268,10 +380,12 @@ class HadithAudioController(
         val headerActive = isPlayingNow && t >= max(0.0, hdrStart - 0.08) && t <= hdrEnd + 0.12
 
         val activeIdx = findWordIndexBinary(h.words, t)
+        val activePara = h.words.getOrNull(activeIdx)?.p ?: _state.value.activeParagraphIndex
         _state.update {
             it.copy(
                 currentSec = t,
                 activeWordIndex = activeIdx,
+                activeParagraphIndex = activePara,
                 isHeaderActive = headerActive
             )
         }

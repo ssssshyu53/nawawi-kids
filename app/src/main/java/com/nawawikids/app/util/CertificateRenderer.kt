@@ -19,10 +19,13 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Generates the personalized Arabic completion certificate bitmap onto assets/certificate_template.jpg
- * using exact pill-box coordinates from certificate.php and native Android RTL Arabic shaping.
+ * Generates the personalized Arabic completion certificate bitmap onto assets/certificate_template.png
+ * (native 1451x1084 artwork) with optically centered Name, Date, and Signature ("منصة أبطال السنة").
  */
 object CertificateRenderer {
+
+    const val TEMPLATE_ASPECT_RATIO = 1451f / 1084f
+    private const val SIGNATURE_LABEL = "منصة أبطال السنة"
 
     fun renderCertificateBitmap(
         context: Context,
@@ -30,7 +33,7 @@ object CertificateRenderer {
         dateString: String = SimpleDateFormat("yyyy/MM/dd", Locale.US).format(Date())
     ): Bitmap? {
         val baseBitmap = try {
-            context.assets.open("certificate_template.jpg").use { stream ->
+            context.assets.open("certificate_template.png").use { stream ->
                 BitmapFactory.decodeStream(stream)
             }
         } catch (_: Exception) {
@@ -41,72 +44,89 @@ object CertificateRenderer {
         baseBitmap.recycle()
 
         val canvas = Canvas(mutable)
-        val scaleX = mutable.width / 1024f
-        val scaleY = mutable.height / 764f
+        val scaleX = mutable.width / 1451f
+        val scaleY = mutable.height / 1084f
 
-        val whitePaint = Paint().apply {
-            color = Color.WHITE
+        // Gently blend out the placeholder dotted lines in the Date & Signature cloud boxes
+        // using each cloud's exact sampled ivory-cream fill so Arabic text sits cleanly without dot clash.
+        val dateCloudMaskPaint = Paint().apply {
+            color = Color.rgb(254, 250, 232)
             style = Paint.Style.FILL
         }
+        canvas.drawRect(310f * scaleX, 993f * scaleY, 526f * scaleX, 1005f * scaleY, dateCloudMaskPaint)
 
-        // Mask the placeholder dots inside the 3 pill boxes cleanly
-        canvas.drawRect(276f * scaleX, 392f * scaleY, 691f * scaleX, 428f * scaleY, whitePaint)
-        canvas.drawRect(662f * scaleX, 646f * scaleY, 796f * scaleX, 678f * scaleY, whitePaint)
-        canvas.drawRect(145f * scaleX, 646f * scaleY, 286f * scaleX, 678f * scaleY, whitePaint)
+        val signatureCloudMaskPaint = Paint().apply {
+            color = Color.rgb(253, 248, 230)
+            style = Paint.Style.FILL
+        }
+        canvas.drawRect(844f * scaleX, 993f * scaleY, 1066f * scaleX, 1005f * scaleY, signatureCloudMaskPaint)
 
-        val typeface = try {
-            Typeface.createFromAsset(context.assets, "fonts/Amiri-Bold.ttf")
+        val nameTypeface = try {
+            ResourcesCompat.getFont(context, R.font.tajawal_extrabold)
+                ?: ResourcesCompat.getFont(context, R.font.amiri_bold)
+                ?: Typeface.DEFAULT_BOLD
         } catch (_: Exception) {
-            ResourcesCompat.getFont(context, R.font.amiri_bold) ?: Typeface.DEFAULT_BOLD
+            Typeface.DEFAULT_BOLD
+        }
+
+        val detailTypeface = try {
+            ResourcesCompat.getFont(context, R.font.tajawal_bold)
+                ?: nameTypeface
+        } catch (_: Exception) {
+            nameTypeface
         }
 
         val cleanName = rawStudentName.trim().take(50).ifBlank { "الطالب المتفوق" }
+        val arabicDate = ArabicUtils.toArabicDigits(dateString)
 
-        drawFittedCenteredText(
+        // 1. Student Name inside the central dashed orange pill (x=308..1068 clear of pencil, y=303..387)
+        drawFittedVerticallyCenteredText(
             canvas = canvas,
             text = cleanName,
-            typeface = typeface,
-            centerX = 483f * scaleX,
-            baselineY = 418f * scaleY,
-            maxWidth = 386f * scaleX,
-            maxSizePx = 32f * scaleY,
+            typeface = nameTypeface,
+            centerX = 695f * scaleX,
+            centerY = 345f * scaleY,
+            maxWidth = 680f * scaleX,
+            maxSizePx = 50f * scaleY,
+            minSizePx = 22f * scaleY,
+            color = Color.rgb(30, 58, 95)
+        )
+
+        // 2. Date inside the bottom-left cloud ("التّاريخ:" is on the right at x=532..611; dots x=313..524)
+        drawFittedVerticallyCenteredText(
+            canvas = canvas,
+            text = arabicDate,
+            typeface = detailTypeface,
+            centerX = 418f * scaleX,
+            centerY = 988f * scaleY,
+            maxWidth = 196f * scaleX,
+            maxSizePx = 29f * scaleY,
             minSizePx = 16f * scaleY,
-            color = Color.rgb(24, 52, 74)
+            color = Color.rgb(68, 45, 25)
         )
 
-        drawFittedCenteredText(
+        // 3. Signature inside the bottom-right cloud ("التّوقيع:" + quill on the right at x=1072..1239; dots x=848..1064)
+        drawFittedVerticallyCenteredText(
             canvas = canvas,
-            text = dateString,
-            typeface = typeface,
-            centerX = 729f * scaleX,
-            baselineY = 668f * scaleY,
-            maxWidth = 122f * scaleX,
-            maxSizePx = 20f * scaleY,
-            minSizePx = 13f * scaleY,
-            color = Color.rgb(82, 54, 34)
-        )
-
-        drawFittedCenteredText(
-            canvas = canvas,
-            text = "الأربعون النووية",
-            typeface = typeface,
-            centerX = 215f * scaleX,
-            baselineY = 668f * scaleY,
-            maxWidth = 128f * scaleX,
-            maxSizePx = 20f * scaleY,
-            minSizePx = 13f * scaleY,
-            color = Color.rgb(15, 118, 102)
+            text = SIGNATURE_LABEL,
+            typeface = detailTypeface,
+            centerX = 955f * scaleX,
+            centerY = 988f * scaleY,
+            maxWidth = 206f * scaleX,
+            maxSizePx = 28f * scaleY,
+            minSizePx = 15f * scaleY,
+            color = Color.rgb(15, 118, 110)
         )
 
         return mutable
     }
 
-    private fun drawFittedCenteredText(
+    private fun drawFittedVerticallyCenteredText(
         canvas: Canvas,
         text: String,
         typeface: Typeface,
         centerX: Float,
-        baselineY: Float,
+        centerY: Float,
         maxWidth: Float,
         maxSizePx: Float,
         minSizePx: Float,
@@ -125,6 +145,8 @@ object CertificateRenderer {
             if (bounds.width() <= maxWidth) break
             size -= 1f
         }
+        val fm = paint.fontMetrics
+        val baselineY = centerY - (fm.ascent + fm.descent) / 2f
         canvas.drawText(text, centerX, baselineY, paint)
     }
 

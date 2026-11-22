@@ -35,7 +35,8 @@ data class LiveRecitationState(
     val lastHeardSnippet: String = "",
     val rmsLevel: Float = 0f,
     val errorMessage: String? = null,
-    val speechAvailable: Boolean = true
+    val speechAvailable: Boolean = true,
+    val pauseOnMistake: Boolean = true
 ) {
     val progressFraction: Float
         get() = if (totalWords <= 0) 0f else (revealedIndices.size.toFloat() / totalWords.toFloat()).coerceIn(0f, 1f)
@@ -49,8 +50,11 @@ data class LiveRecitationState(
 }
 
 /**
- * Manages real-time Android SpeechRecognizer continuous listening for live hadith recitation,
- * word-by-word reveal, and automatic mistake detection with retry prompts.
+ * Enhanced continuous live Arabic Hadith recitation engine:
+ * - Uses full-utterance anchoring + multi-hypothesis (top 3 ASR candidates) for far higher accuracy.
+ * - Supports starting from any paragraph/sentence (essential for longer hadiths!).
+ * - Supports toggling Pause-on-Mistake vs Gentle-Inline-Warning mode.
+ * - Seamlessly restarts listening sessions across natural breathing pauses.
  */
 class LiveRecitationController(
     private val context: Context,
@@ -63,7 +67,7 @@ class LiveRecitationController(
     private var activeWords: List<WordTiming> = emptyList()
     private var activeHadithId: Int = -1
     private var shouldKeepListening: Boolean = false
-    private var consumedTokensInUtterance: Int = 0
+    private var utteranceStartTargetIndex: Int = 0
     private var consecutiveErrors: Int = 0
 
     private val _state = MutableStateFlow(
@@ -77,14 +81,45 @@ class LiveRecitationController(
         activeWords = words
         val startIdx = ArabicSpeechMatcher.advancePastPunctuation(words, 0)
         val initialRevealed = (0 until startIdx).toSet()
+        utteranceStartTargetIndex = startIdx
         _state.value = LiveRecitationState(
             hadithId = hadithId,
             status = RecitationStatus.IDLE,
             currentTargetIndex = startIdx,
             revealedIndices = initialRevealed,
             totalWords = words.size,
-            speechAvailable = SpeechRecognizer.isRecognitionAvailable(context)
+            speechAvailable = SpeechRecognizer.isRecognitionAvailable(context),
+            pauseOnMistake = _state.value.pauseOnMistake
         )
+    }
+
+    /**
+     * Allows the student to start live recitation from any paragraph/word index
+     * (revealing earlier words automatically so they can practice a specific section!).
+     */
+    fun jumpToWordIndex(wordIndex: Int) {
+        if (wordIndex !in activeWords.indices) return
+        val wasListening = _state.value.status == RecitationStatus.LISTENING
+        stopListening()
+        val safeIdx = ArabicSpeechMatcher.advancePastPunctuation(activeWords, wordIndex)
+        utteranceStartTargetIndex = safeIdx
+        _state.update {
+            it.copy(
+                currentTargetIndex = safeIdx,
+                revealedIndices = (0 until safeIdx).toSet(),
+                mistakeWordSpoken = null,
+                mistakeTargetIndex = null,
+                errorMessage = null,
+                status = RecitationStatus.IDLE
+            )
+        }
+        if (wasListening) {
+            startListening()
+        }
+    }
+
+    fun setPauseOnMistake(enabled: Boolean) {
+        _state.update { it.copy(pauseOnMistake = enabled) }
     }
 
     fun startListening() {
@@ -98,7 +133,7 @@ class LiveRecitationController(
                     it.copy(
                         status = RecitationStatus.UNAVAILABLE,
                         speechAvailable = false,
-                        errorMessage = "خدمة التعرف على الصوت غير متوفرة على هذا الجهاز حالياً. يمكنك استخدام التسميع التدريجي أو التسجيل الصوتي بالأسفل."
+                        errorMessage = "خدمة التعرف على الصوت غير متوفرة على هذا الجهاز حالياً. يمكنك استخدام الإخفاء التدريجي والتسجيل بالأسفل."
                     )
                 }
                 return@post
@@ -106,6 +141,7 @@ class LiveRecitationController(
 
             shouldKeepListening = true
             consecutiveErrors = 0
+            utteranceStartTargetIndex = _state.value.currentTargetIndex
             _state.update {
                 it.copy(
                     status = RecitationStatus.LISTENING,
@@ -155,9 +191,11 @@ class LiveRecitationController(
     fun revealCurrentWordAndContinue() {
         val idx = _state.value.currentTargetIndex
         if (idx !in activeWords.indices) return
+        val wasMistake = _state.value.status == RecitationStatus.MISTAKE_PAUSED
         val nextIdx = ArabicSpeechMatcher.advancePastPunctuation(activeWords, idx + 1)
         val newRevealed = _state.value.revealedIndices + (idx until nextIdx).toSet()
         val isDone = nextIdx >= activeWords.size
+        utteranceStartTargetIndex = nextIdx
         _state.update {
             it.copy(
                 currentTargetIndex = nextIdx,
@@ -172,7 +210,7 @@ class LiveRecitationController(
             shouldKeepListening = false
             destroyRecognizer()
             onRecitationCompleted(activeHadithId)
-        } else if (_state.value.status == RecitationStatus.MISTAKE_PAUSED) {
+        } else if (wasMistake) {
             startListening()
         }
     }
@@ -184,7 +222,7 @@ class LiveRecitationController(
     private fun launchRecognizerSession() {
         if (!shouldKeepListening) return
         destroyRecognizer()
-        consumedTokensInUtterance = 0
+        utteranceStartTargetIndex = _state.value.currentTargetIndex
 
         try {
             val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
@@ -214,8 +252,7 @@ class LiveRecitationController(
                     when (error) {
                         SpeechRecognizer.ERROR_NO_MATCH,
                         SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> {
-                            // Silence pause between phrases — keep session alive smoothly!
-                            scheduleRestart(220L)
+                            scheduleRestart(180L)
                         }
                         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
                             shouldKeepListening = false
@@ -238,8 +275,8 @@ class LiveRecitationController(
                         }
                         else -> {
                             consecutiveErrors++
-                            if (consecutiveErrors <= 3) {
-                                scheduleRestart(400L)
+                            if (consecutiveErrors <= 4) {
+                                scheduleRestart(320L)
                             } else {
                                 shouldKeepListening = false
                                 _state.update {
@@ -254,25 +291,25 @@ class LiveRecitationController(
                 }
 
                 override fun onResults(results: Bundle?) {
-                    val spoken = results
+                    val candidates = results
                         ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        ?.firstOrNull()
+                        ?.filter { it.isNotBlank() }
                         .orEmpty()
-                    if (spoken.isNotBlank()) {
-                        processTranscript(spoken, isFinal = true)
+                    if (candidates.isNotEmpty()) {
+                        processCandidates(candidates, isFinal = true)
                     }
                     if (shouldKeepListening && _state.value.status == RecitationStatus.LISTENING) {
-                        scheduleRestart(180L)
+                        scheduleRestart(140L)
                     }
                 }
 
                 override fun onPartialResults(partialResults: Bundle?) {
-                    val spoken = partialResults
+                    val candidates = partialResults
                         ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        ?.firstOrNull()
+                        ?.filter { it.isNotBlank() }
                         .orEmpty()
-                    if (spoken.isNotBlank()) {
-                        processTranscript(spoken, isFinal = false)
+                    if (candidates.isNotEmpty()) {
+                        processCandidates(candidates, isFinal = false)
                     }
                 }
 
@@ -284,9 +321,9 @@ class LiveRecitationController(
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar-SA")
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "ar-SA")
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2200L)
-                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L)
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2600L)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2000L)
             }
             recognizer.startListening(intent)
         } catch (_: Exception) {
@@ -300,28 +337,22 @@ class LiveRecitationController(
         }
     }
 
-    private fun processTranscript(rawTranscript: String, isFinal: Boolean) {
+    private fun processCandidates(candidates: List<String>, isFinal: Boolean) {
         val currentState = _state.value
         if (currentState.status != RecitationStatus.LISTENING) return
 
-        val allTokens = ArabicSpeechMatcher.tokenize(rawTranscript)
-        if (allTokens.isEmpty()) return
+        val topRaw = candidates.first()
+        _state.update { it.copy(lastHeardSnippet = topRaw) }
 
-        _state.update { it.copy(lastHeardSnippet = rawTranscript) }
-
-        if (consumedTokensInUtterance >= allTokens.size) return
-        val newTokens = allTokens.subList(consumedTokensInUtterance, allTokens.size)
-
-        val eval = ArabicSpeechMatcher.evaluateSpokenTokens(
+        val eval = ArabicSpeechMatcher.evaluateCandidates(
             words = activeWords,
+            utteranceStartIndex = utteranceStartTargetIndex,
             currentTargetIndex = currentState.currentTargetIndex,
-            newTokens = newTokens,
+            candidates = candidates,
             isFinalResult = isFinal
         )
 
-        consumedTokensInUtterance += eval.consumedSpokenTokens
-
-        if (eval.newlyMatchedIndices.isNotEmpty()) {
+        if (eval.newlyMatchedIndices.isNotEmpty() || eval.newTargetIndex > currentState.currentTargetIndex) {
             val allNewlyRevealed = (currentState.currentTargetIndex until eval.newTargetIndex).toSet() + eval.newlyMatchedIndices
             val updatedRevealed = currentState.revealedIndices + allNewlyRevealed
             val isCompleted = eval.newTargetIndex >= activeWords.size
@@ -346,19 +377,30 @@ class LiveRecitationController(
         }
 
         if (eval.mistakeSpokenWord != null) {
-            // Pause listening & prompt the child gently to repeat the word!
-            shouldKeepListening = false
-            destroyRecognizer()
-            _state.update {
-                it.copy(
-                    status = RecitationStatus.MISTAKE_PAUSED,
-                    mistakeWordSpoken = eval.mistakeSpokenWord,
-                    mistakeTargetIndex = eval.newTargetIndex,
-                    mistakeCount = it.mistakeCount + 1,
-                    rmsLevel = 0f
-                )
+            if (currentState.pauseOnMistake) {
+                shouldKeepListening = false
+                destroyRecognizer()
+                _state.update {
+                    it.copy(
+                        status = RecitationStatus.MISTAKE_PAUSED,
+                        mistakeWordSpoken = eval.mistakeSpokenWord,
+                        mistakeTargetIndex = eval.newTargetIndex,
+                        mistakeCount = it.mistakeCount + 1,
+                        rmsLevel = 0f
+                    )
+                }
+                onMistakeDetected()
+            } else {
+                // Continuous gentle mode: warn without stopping the mic, and anchor after the word
+                _state.update {
+                    it.copy(
+                        mistakeWordSpoken = eval.mistakeSpokenWord,
+                        mistakeTargetIndex = eval.newTargetIndex,
+                        mistakeCount = it.mistakeCount + 1
+                    )
+                }
+                onMistakeDetected()
             }
-            onMistakeDetected()
         }
     }
 

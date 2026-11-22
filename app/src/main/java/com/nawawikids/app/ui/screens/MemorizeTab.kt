@@ -103,6 +103,7 @@ fun MemorizeTab(
     onHintCurrentWord: () -> Unit,
     onSkipCurrentWord: () -> Unit,
     onResetLiveRecitation: () -> Unit,
+    onSetPauseOnMistake: (Boolean) -> Unit,
     onPlayWordOrPhraseHint: (Int, Int) -> Unit,
     onSetMemHidePercent: (Int) -> Unit,
     onReshuffleHidden: () -> Unit,
@@ -245,6 +246,7 @@ fun MemorizeTab(
                 onHintCurrentWord = onHintCurrentWord,
                 onSkipCurrentWord = onSkipCurrentWord,
                 onResetRecitation = onResetLiveRecitation,
+                onSetPauseOnMistake = onSetPauseOnMistake,
                 onPlayWordOrPhraseHint = onPlayWordOrPhraseHint
             )
         } else {
@@ -306,6 +308,7 @@ private fun LiveVoiceRecitationSection(
     onHintCurrentWord: () -> Unit,
     onSkipCurrentWord: () -> Unit,
     onResetRecitation: () -> Unit,
+    onSetPauseOnMistake: (Boolean) -> Unit,
     onPlayWordOrPhraseHint: (Int, Int) -> Unit
 ) {
     val isListening = recitationState.status == RecitationStatus.LISTENING
@@ -491,7 +494,66 @@ private fun LiveVoiceRecitationSection(
             }
         }
 
-        // Helper Controls Row: Listen Next Phrase + Hint + Reset
+        // Live Focus Context Strip (shows last 2 spoken words + current waiting slot)
+        if (!isCompleted && hadith.words.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            val curIdx = recitationState.currentTargetIndex
+            val prevContext = ((curIdx - 2).coerceAtLeast(0) until curIdx)
+                .mapNotNull { hadith.words.getOrNull(it)?.t }
+                .joinToString(" ")
+            val curWord = hadith.words.getOrNull(curIdx)?.t.orEmpty()
+            val curHinted = recitationState.hintedIndices.contains(curIdx)
+
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White,
+                border = BorderStroke(1.5.dp, StorybookColors.VioletBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "الموضع:",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Black,
+                        color = StorybookColors.VioletDark
+                    )
+                    if (prevContext.isNotBlank()) {
+                        Text(
+                            text = prevContext,
+                            fontFamily = AmiriFontFamily,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = StorybookColors.EmeraldDark,
+                            maxLines = 1
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isMistake) StorybookColors.CoralSoft else StorybookColors.VioletSoft,
+                        border = BorderStroke(1.5.dp, if (isMistake) StorybookColors.CoralMain else StorybookColors.VioletMain),
+                        modifier = Modifier.clickable { onPlayWordOrPhraseHint(curIdx, 1) }
+                    ) {
+                        Text(
+                            text = when {
+                                curHinted -> ArabicUtils.firstLetterHint(curWord)
+                                isMistake -> "أعد الكلمة"
+                                else -> "الكلمة التالية..."
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Black,
+                            color = if (isMistake) StorybookColors.CoralDeep else StorybookColors.VioletDeep,
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Helper Controls Row: Listen Next Phrase + Hint + Pause-on-Mistake Mode + Reset
         Spacer(Modifier.height(10.dp))
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -527,6 +589,25 @@ private fun LiveVoiceRecitationSection(
             ) {
                 Icon(Icons.Rounded.Lightbulb, contentDescription = null, tint = StorybookColors.GoldDark, modifier = Modifier.size(16.dp))
                 Text("تلميح أول حرف", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = StorybookColors.GoldDeep)
+            }
+
+            CandyButton(
+                onClick = { onSetPauseOnMistake(!recitationState.pauseOnMistake) },
+                modifier = Modifier.testTag("toggle_pause_on_mistake_button"),
+                topColor = if (recitationState.pauseOnMistake) StorybookColors.VioletSoft else Color.White,
+                bottomColor = if (recitationState.pauseOnMistake) Color(0xFFEDE9FE) else StorybookColors.EmeraldSoft,
+                borderColor = if (recitationState.pauseOnMistake) StorybookColors.VioletMain else StorybookColors.EmeraldMain,
+                lipColor = if (recitationState.pauseOnMistake) StorybookColors.VioletDark else StorybookColors.EmeraldDark,
+                contentColor = if (recitationState.pauseOnMistake) StorybookColors.VioletDeep else StorybookColors.EmeraldDark,
+                cornerRadius = 14.dp,
+                contentPadding = PaddingValues(horizontal = 11.dp, vertical = 7.dp)
+            ) {
+                Text(
+                    text = if (recitationState.pauseOnMistake) "التوقف عند الخطأ: مفعّل" else "التسميع المتواصل: مفعّل",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    color = if (recitationState.pauseOnMistake) StorybookColors.VioletDeep else StorybookColors.EmeraldDark
+                )
             }
 
             CandyButton(

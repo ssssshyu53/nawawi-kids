@@ -23,10 +23,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -42,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -68,8 +71,10 @@ fun CertificateDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val doneCount = progress.completedIds.size
-    val canIssue = doneCount >= totalHadiths || progress.teacherMode
+    val recitedCount = progress.recitedIds.size
+    // Certificate strictly requires completing live recitation of ALL Hadiths —
+    // Free Browse Mode ("وضع التصفح الحر") NEVER bypasses this requirement.
+    val canIssue = recitedCount >= totalHadiths
     var renderedBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     LaunchedEffect(progress.studentName, canIssue) {
@@ -115,7 +120,9 @@ fun CertificateDialog(
                 }
 
                 if (!canIssue) {
-                    val left = (totalHadiths - doneCount).coerceAtLeast(0)
+                    val left = (totalHadiths - recitedCount).coerceAtLeast(0)
+                    val pct = if (totalHadiths > 0) (recitedCount.toFloat() / totalHadiths.toFloat()).coerceIn(0f, 1f) else 0f
+
                     Box(
                         modifier = Modifier
                             .size(72.dp)
@@ -131,18 +138,60 @@ fun CertificateDialog(
                             modifier = Modifier.size(36.dp)
                         )
                     }
+
                     Text(
-                        text = "أتممت ${ArabicUtils.toArabicDigits(doneCount)} من ${ArabicUtils.toArabicDigits(totalHadiths)} نجمة!",
+                        text = "أتممت تسميع ${ArabicUtils.toArabicDigits(recitedCount)} من ${ArabicUtils.toArabicDigits(totalHadiths)} حديثاً",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black,
-                        color = StorybookColors.StoryNavy
+                        color = StorybookColors.StoryNavy,
+                        textAlign = TextAlign.Center
                     )
+
+                    LinearProgressIndicator(
+                        progress = { pct },
+                        color = StorybookColors.TealMain,
+                        trackColor = StorybookColors.GoldBorder.copy(alpha = 0.45f),
+                        strokeCap = StrokeCap.Round,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(10.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                    )
+
                     Text(
-                        text = "بقي لك ${ArabicUtils.toArabicDigits(left)} نجمة فقط ليُفتح صندوق الكنز وتصدر شهادتك الذهبية باسمك! (أو يمكن للمعلم تفعيل وضع المعلم من أسفل الخريطة للاستعراض)",
+                        text = "بقي لك إتمام تسميع ${ArabicUtils.toArabicDigits(left)} حديثاً لتُفتح شهادتك الرسمية باسمك من منصة أبطال السنة!",
                         style = MaterialTheme.typography.bodyMedium,
                         color = StorybookColors.StoryMuted,
                         textAlign = TextAlign.Center
                     )
+
+                    if (progress.teacherMode) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = StorybookColors.SkySoft,
+                            border = BorderStroke(1.5.dp, StorybookColors.SkyAccent.copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Explore,
+                                    contentDescription = null,
+                                    tint = StorybookColors.SkyDark,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    text = "وضع التصفح الحر يفتح الأحاديث للاستعراض فقط، ولا يمكن إصدار الشهادة إلا بعد إتمام تسميع جميع الأحاديث الـ ${ArabicUtils.toArabicDigits(totalHadiths)}.",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = StorybookColors.SkyDark
+                                )
+                            }
+                        }
+                    }
                 } else {
                     Text(
                         text = "اكتب اسم البطل كما تحب أن يظهر على الشهادة:",
@@ -177,7 +226,7 @@ fun CertificateDialog(
                             contentScale = ContentScale.FillWidth,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .aspectRatio(1024f / 764f)
+                                .aspectRatio(CertificateRenderer.TEMPLATE_ASPECT_RATIO)
                                 .clip(RoundedCornerShape(18.dp))
                                 .border(3.dp, StorybookColors.GoldMain, RoundedCornerShape(18.dp))
                         )
@@ -191,7 +240,7 @@ fun CertificateDialog(
                                         putExtra(Intent.EXTRA_STREAM, uri)
                                         putExtra(
                                             Intent.EXTRA_TEXT,
-                                            "شهادة إتمام الأربعين النووية للأطفال — ${progress.heroDisplayName}"
+                                            "شهادة إتمام الأربعين النووية — منصة أبطال السنة — ${progress.heroDisplayName}"
                                         )
                                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                     }

@@ -1,5 +1,10 @@
 package com.nawawikids.app.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,6 +48,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,6 +77,7 @@ import com.nawawikids.app.model.StationTab
 import com.nawawikids.app.model.StorybookChapters
 import com.nawawikids.app.model.UserProgress
 import com.nawawikids.app.speech.LiveRecitationState
+import com.nawawikids.app.speech.RecitationStatus
 import com.nawawikids.app.ui.components.AssetImage
 import com.nawawikids.app.ui.components.CandyButton
 import com.nawawikids.app.ui.components.GoldenStarMedallion
@@ -97,6 +104,7 @@ fun StationScreen(
     onPlayQariFromStart: () -> Unit,
     onSeekAudio: (Double, Boolean) -> Unit,
     onRewind5s: () -> Unit,
+    onForward5s: () -> Unit,
     onCycleSpeed: () -> Unit,
     onCycleLoop: () -> Unit,
     onSelectFontSize: (FontSizeOption) -> Unit,
@@ -107,6 +115,7 @@ fun StationScreen(
     onHintCurrentWord: () -> Unit,
     onSkipCurrentWord: () -> Unit,
     onResetLiveRecitation: () -> Unit,
+    onSetPauseOnMistake: (Boolean) -> Unit,
     onPlayWordOrPhraseHint: (Int, Int) -> Unit,
     onSetMemHidePercent: (Int) -> Unit,
     onReshuffleHidden: () -> Unit,
@@ -126,7 +135,12 @@ fun StationScreen(
     onOpenCertificate: () -> Unit
 ) {
     var showPosterModal by remember { mutableStateOf(false) }
+    var audioDrawerExpanded by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+
+    LaunchedEffect(stationState.activeTab) {
+        audioDrawerExpanded = false
+    }
     val chapter = StorybookChapters.byId(hadith.stage)
     val total = allHadiths.size.coerceAtLeast(42)
     val canPrev = hadith.id > 1 && progress.isUnlocked(hadith.id - 1)
@@ -231,17 +245,22 @@ fun StationScreen(
                 }
             }
 
-            // Scrollable Station Workspace (takes remaining space above the persistent bottom dock)
-            Column(
+            // Scrollable Station Workspace + True Floating Audio Capsule Overlay (no background strip behind it!)
+            val showFloatingAudio = recitationState.status != RecitationStatus.LISTENING && !recorderState.isRecording
+            Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .verticalScroll(scrollState)
-                    .widthIn(max = 760.dp)
-                    .align(Alignment.CenterHorizontally)
-                    .padding(horizontal = 14.dp, vertical = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .widthIn(max = 760.dp)
+                        .align(Alignment.TopCenter)
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
                 // Compact Station Title + Companion Tip Banner
                 CompactStationBanner(
                     hadith = hadith,
@@ -260,11 +279,7 @@ fun StationScreen(
                         hadith = hadith,
                         audioState = audioState,
                         fontSize = progress.fontSize,
-                        onTogglePlayPause = onTogglePlayPause,
                         onSeekAudio = onSeekAudio,
-                        onRewind5s = onRewind5s,
-                        onCycleSpeed = onCycleSpeed,
-                        onCycleLoop = onCycleLoop,
                         onSelectFontSize = onSelectFontSize,
                         onOpenPoster = { showPosterModal = true },
                         onGoToLearn = { onSelectTab(StationTab.LEARN) }
@@ -272,6 +287,10 @@ fun StationScreen(
 
                     StationTab.LEARN -> LearnTab(
                         hadith = hadith,
+                        heroName = progress.heroDisplayName,
+                        avatarAsset = progress.avatarChoice.assetPath,
+                        onOpenPoster = { showPosterModal = true },
+                        onCheckLessonSfx = onGameCorrectSfx,
                         onGoToMemorize = { onSelectTab(StationTab.MEMORIZE) }
                     )
 
@@ -289,6 +308,7 @@ fun StationScreen(
                         onHintCurrentWord = onHintCurrentWord,
                         onSkipCurrentWord = onSkipCurrentWord,
                         onResetLiveRecitation = onResetLiveRecitation,
+                        onSetPauseOnMistake = onSetPauseOnMistake,
                         onPlayWordOrPhraseHint = onPlayWordOrPhraseHint,
                         onSetMemHidePercent = onSetMemHidePercent,
                         onReshuffleHidden = onReshuffleHidden,
@@ -320,7 +340,38 @@ fun StationScreen(
                     )
                 }
 
-                Spacer(Modifier.height(6.dp))
+                    // Extra bottom breathing room so the last card scrolls cleanly above the floating capsule
+                    Spacer(Modifier.height(if (showFloatingAudio) 86.dp else 10.dp))
+                }
+
+                // True Floating Audio Capsule overlaid transparently over the page across ALL tabs
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showFloatingAudio,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
+                    val activeCaptionWord = hadith.words.getOrNull(audioState.activeWordIndex)?.t
+                        ?: hadith.authorNote.firstOrNull {
+                            audioState.isPlaying &&
+                                audioState.currentSec >= it.s &&
+                                audioState.currentSec <= it.e + 0.12
+                        }?.t
+                    StickyHadithAudioBar(
+                        hadithTitle = hadith.title,
+                        audioState = audioState,
+                        activeWordText = activeCaptionWord,
+                        expanded = audioDrawerExpanded,
+                        onToggleExpanded = { audioDrawerExpanded = !audioDrawerExpanded },
+                        onTogglePlayPause = onTogglePlayPause,
+                        onPlayFromStart = onPlayQariFromStart,
+                        onSeekAudio = onSeekAudio,
+                        onRewind5s = onRewind5s,
+                        onForward5s = onForward5s,
+                        onCycleSpeed = onCycleSpeed,
+                        onCycleLoop = onCycleLoop
+                    )
+                }
             }
 
             // Persistent Thumb-Friendly Bottom 4-Step Navigation Bar (with safe navigationBarsPadding!)

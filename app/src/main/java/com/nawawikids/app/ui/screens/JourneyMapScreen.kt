@@ -290,7 +290,7 @@ fun JourneyMapScreen(
                 item(key = "treasure_chest") {
                     TreasureRewardBanner(
                         heroName = progress.heroDisplayName,
-                        doneCount = doneCount,
+                        recitedCount = progress.recitedIds.size,
                         total = total,
                         onOpenCertificate = onOpenCertificate
                     )
@@ -631,10 +631,11 @@ private fun ContinueAdventureSpotlight(
                 }
             }
 
+            val allRecited = progress.recitedIds.size >= total
             // Big Play CTA
             CandyButton(
                 onClick = {
-                    if (allDone) onOpenCertificate() else onOpenStation(frontierHadith.id)
+                    if (allDone && allRecited) onOpenCertificate() else onOpenStation(frontierHadith.id)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -647,14 +648,15 @@ private fun ContinueAdventureSpotlight(
                 contentPadding = PaddingValues(vertical = 12.dp)
             ) {
                 Icon(
-                    imageVector = if (allDone) Icons.Rounded.EmojiEvents else Icons.Rounded.PlayArrow,
+                    imageVector = if (allDone && allRecited) Icons.Rounded.EmojiEvents else Icons.Rounded.PlayArrow,
                     contentDescription = null,
                     tint = Color(0xFF451A03),
                     modifier = Modifier.size(22.dp)
                 )
                 Text(
                     text = when {
-                        allDone -> "مبارك! افتح شهادة الأربعين الآن"
+                        allDone && allRecited -> "مبارك! افتح شهادة الأربعين الآن"
+                        allDone -> "أكمل تسميع الأحاديث لفتح الشهادة"
                         doneCount == 0 && frontierHadith.id == 1 -> "ابدأ الرحلة من الحديث الأول"
                         else -> "أكمل المحطة ${ArabicUtils.toArabicDigits(frontierHadith.id)}: ${frontierHadith.title}"
                     },
@@ -1243,11 +1245,11 @@ private fun StepMiniDot(label: String, done: Boolean, lightMode: Boolean) {
 @Composable
 private fun TreasureRewardBanner(
     heroName: String,
-    doneCount: Int,
+    recitedCount: Int,
     total: Int,
     onOpenCertificate: () -> Unit
 ) {
-    val left = (total - doneCount).coerceAtLeast(0)
+    val left = (total - recitedCount).coerceAtLeast(0)
     ToyCard(
         containerColor = Color(0xFFFFF7D6),
         borderColor = Color(0xFFEAB308),
@@ -1284,9 +1286,9 @@ private fun TreasureRewardBanner(
                 )
                 Text(
                     text = if (left <= 0) {
-                        "مبارك يا $heroName! أتممت الـ ${ArabicUtils.toArabicDigits(total)} حديثاً — خذ شهادتك الآن!"
+                        "مبارك يا $heroName! أتممت تسميع الـ ${ArabicUtils.toArabicDigits(total)} حديثاً — خذ شهادتك الآن!"
                     } else {
-                        "بقي لك ${ArabicUtils.toArabicDigits(left)} نجمة لفتح شهادتك الذهبية باسمك."
+                        "بقي لك تسميع ${ArabicUtils.toArabicDigits(left)} حديثاً لفتح شهادتك الرسمية باسمك."
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = StorybookColors.StoryMuted

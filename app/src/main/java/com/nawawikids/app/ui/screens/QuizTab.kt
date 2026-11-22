@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,14 +18,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Extension
+import androidx.compose.material.icons.rounded.FactCheck
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.Quiz
@@ -80,10 +84,12 @@ fun QuizTab(
     onOpenCertificate: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        // 3 Playful Games Switcher Strip
+        // 5 Varied Games & Exercises Horizontal Strip
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             GameModePill(
                 label = "أسئلة النجمة",
@@ -93,7 +99,27 @@ fun QuizTab(
                 activeColor = StorybookColors.CoralMain,
                 activeDark = StorybookColors.CoralDark,
                 onClick = { onSelectQuizMode(QuizMode.HERO_QUIZ) },
-                modifier = Modifier.weight(1f).testTag("quiz_mode_hero")
+                modifier = Modifier.testTag("quiz_mode_hero")
+            )
+            GameModePill(
+                label = "صواب أم خطأ",
+                icon = Icons.Rounded.FactCheck,
+                active = stationState.quizMode == QuizMode.TRUE_FALSE,
+                completed = false,
+                activeColor = StorybookColors.GoldMain,
+                activeDark = StorybookColors.GoldDark,
+                onClick = { onSelectQuizMode(QuizMode.TRUE_FALSE) },
+                modifier = Modifier.testTag("quiz_mode_true_false")
+            )
+            GameModePill(
+                label = "أكمل الفراغ",
+                icon = Icons.Rounded.EditNote,
+                active = stationState.quizMode == QuizMode.FILL_BLANK,
+                completed = false,
+                activeColor = StorybookColors.SkyAccent,
+                activeDark = StorybookColors.SkyDark,
+                onClick = { onSelectQuizMode(QuizMode.FILL_BLANK) },
+                modifier = Modifier.testTag("quiz_mode_fill_blank")
             )
             GameModePill(
                 label = "رتّب الكلمات",
@@ -103,7 +129,7 @@ fun QuizTab(
                 activeColor = StorybookColors.TealMain,
                 activeDark = StorybookColors.TealDark,
                 onClick = { onSelectQuizMode(QuizMode.WORD_PUZZLE) },
-                modifier = Modifier.weight(1f).testTag("quiz_mode_puzzle")
+                modifier = Modifier.testTag("quiz_mode_puzzle")
             )
             GameModePill(
                 label = "وصّل المعاني",
@@ -113,7 +139,7 @@ fun QuizTab(
                 activeColor = StorybookColors.VioletMain,
                 activeDark = StorybookColors.VioletDark,
                 onClick = { onSelectQuizMode(QuizMode.VOCAB_MATCH) },
-                modifier = Modifier.weight(1f).testTag("quiz_mode_vocab")
+                modifier = Modifier.testTag("quiz_mode_vocab")
             )
         }
 
@@ -127,6 +153,22 @@ fun QuizTab(
                 onNextStation = onNextStation,
                 onBackToMap = onBackToMap,
                 onOpenCertificate = onOpenCertificate
+            )
+
+            QuizMode.TRUE_FALSE -> TrueFalseChallengeGame(
+                hadith = hadith,
+                allHadiths = allHadiths,
+                heroName = progress.heroDisplayName,
+                onCorrectSfx = onGameCorrectSfx,
+                onWrongSfx = onGameWrongSfx
+            )
+
+            QuizMode.FILL_BLANK -> FillInBlankGame(
+                hadith = hadith,
+                allHadiths = allHadiths,
+                heroName = progress.heroDisplayName,
+                onCorrectSfx = onGameCorrectSfx,
+                onWrongSfx = onGameWrongSfx
             )
 
             QuizMode.WORD_PUZZLE -> WordOrderPuzzleGame(
@@ -171,7 +213,7 @@ private fun GameModePill(
         lipColor = if (active) activeDark else StorybookColors.GoldLip,
         contentColor = if (active) Color.White else StorybookColors.StoryNavy,
         cornerRadius = 15.dp,
-        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 10.dp)
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
     ) {
         Icon(
             imageVector = if (completed && !active) Icons.Rounded.CheckCircle else icon,
@@ -543,15 +585,16 @@ private fun WordOrderPuzzleGame(
     onWrongPick: () -> Unit,
     onSolved: () -> Unit
 ) {
-    val targetWords = remember(hadith.id) {
+    var shuffleSeed by remember(hadith.id) { mutableStateOf(1) }
+    val targetWords = remember(hadith.id, shuffleSeed) {
         val rawWords = hadith.words.map { it.t }
-        // Try to start right after the opening guillemet « (the prophetic saying itself!)
-        val quoteStart = rawWords.indexOfFirst { it.contains("«") }
-        val start = if (quoteStart >= 0 && quoteStart + 5 < rawWords.size) quoteStart else 0
+        val quoteStart = rawWords.indexOfFirst { it.contains("«") }.coerceAtLeast(0)
+        val availableLen = (rawWords.size - quoteStart).coerceAtLeast(1)
+        val offset = if (availableLen > 10) ((shuffleSeed - 1) * 5) % (availableLen - 6).coerceAtLeast(1) else 0
+        val start = (quoteStart + offset).coerceAtMost((rawWords.size - 5).coerceAtLeast(0))
         rawWords.drop(start).take(7.coerceAtMost(rawWords.size - start))
     }
 
-    var shuffleSeed by remember(hadith.id) { mutableStateOf(1) }
     val scrambled = remember(hadith.id, shuffleSeed) {
         val indexed = targetWords.mapIndexed { idx, w -> idx to w }
         val rng = Random(hadith.id * 7919 + shuffleSeed * 31)
